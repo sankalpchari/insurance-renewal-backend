@@ -4,7 +4,7 @@ import {
     getInsuranceReceipient,
     createInsuranceReceipient,
     deleteInsuranceReceipient,
-    getSingleInsuranceReceipient,
+    getSingleInsuranceRecipient,
     updateInsuranceReceipient,
  } from "../controllers/InsuranceReceipient.controller.js";
 const InsuranceReceipientRouter  = express.Router();
@@ -12,7 +12,7 @@ const InsuranceReceipientRouter  = express.Router();
 
 InsuranceReceipientRouter.get("/", auth, getInsuranceReceipient);
 InsuranceReceipientRouter.post("/", auth, createInsuranceReceipient);
-InsuranceReceipientRouter.get("/:id", auth, getSingleInsuranceReceipient);
+InsuranceReceipientRouter.get("/:id", auth, getSingleInsuranceRecipient);
 InsuranceReceipientRouter.patch("/:id", auth, updateInsuranceReceipient);
 InsuranceReceipientRouter.delete("/:id", auth, deleteInsuranceReceipient);
 

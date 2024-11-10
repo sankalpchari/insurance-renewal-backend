@@ -25,7 +25,7 @@ export const insuranceDetailsSchema = Joi.object({
             'string.base': '"recipient_ma" must be a string',
             'any.required': '"recipient_ma" is required'
         }),
-    doctor_id: Joi.number()
+    doctor_id: Joi.number().optional()
         .integer()
         .allow(null) // Allowing null if it's not required
         .messages({
@@ -177,10 +177,10 @@ export const insuranceFormSchema = Joi.object({
       'string.empty': 'Doctor name is required',
     }),
     doctor_number: Joi.string()
-      .pattern(/^[0-9]+$/)
+      .pattern(/^1?-?\(?\d{3}\)?[-.\s]?\d{3}[-.\s]?\d{4}(\s?(x|ext\.?|extension)\s?\d{1,5})?$/)
       .required()
       .messages({
-        'string.pattern.base': 'Doctor number must be numeric',
+        'string.pattern.base': 'Doctor phone number must be numeric',
         'string.empty': 'Doctor number is required',
       }),
     from_service_date: Joi.date().required().messages({
@@ -192,6 +192,7 @@ export const insuranceFormSchema = Joi.object({
       .messages({
         'any.only': 'Invalid insurance status',
       }),
+    provider_id:Joi.number(),
     max_per_day: Joi.number()
       .positive()
       .integer()

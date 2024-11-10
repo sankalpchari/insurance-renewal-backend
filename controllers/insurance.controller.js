@@ -1,24 +1,64 @@
 import InsuranceDetails from "../models/insuranceDetails.model.js";
 import InsuranceProvider from "../models/InsuranceProvider.model.js";
 import DoctorDetails from "../models/doctors.model.js";
-import sequelize from "../config/db.js";
-import { where } from "sequelize";
+import sequelize from "sequelize";
+import { raw } from "mysql2";
 
 export const getInsuranceDetails = async (req, res) => {
     try {
+
+        const {
+            is_default
+        } = req.query;
+        let whereData = {}
+
+        if(is_default){
+            whereData = {
+                where :{
+                    is_default : is_default 
+                }
+            }
+        }
         const currentDate = new Date();
 
         const insuranceDetails = await InsuranceDetails.findAll({
+            include: [
+                {
+                    model: InsuranceProvider,
+                    as: 'InsuranceProvider',
+                    attributes: ['provider_name'],
+                    required: true
+                },
+                {
+                    model: DoctorDetails,
+                    as: 'DoctorDetail',
+                    attributes: ['doctor_name',"doctor_phone_no"],
+                    required: true,
+                
+                }
+            ],
+            attributes: {
+                include: [
+                    [sequelize.col('InsuranceProvider.provider_name'), 'provider_name'],
+                    [sequelize.fn('DATE_FORMAT', sequelize.col('from_service_date'), '%Y-%m-%d'), 'from_service_date'],
+                    [sequelize.fn('DATE_FORMAT', sequelize.col('to_service_date'), '%Y-%m-%d'), 'to_service_date']
+                ]
+            },
             order: [
-                // Sort by the absolute difference from the current date to `to_service_date` in ascending order
                 [
-                    sequelize.literal(`ABS(DATEDIFF(to_service_date, '${currentDate.toISOString().split('T')[0]}'))`),
+                    sequelize.literal(
+                        `ABS(DATEDIFF(to_service_date, '${currentDate.toISOString().split('T')[0]}'))`
+                    ),
                     'ASC'
                 ]
-            ]
+            ],
+            ...whereData,
+            raw: true
         });
 
-        return res.status(200).json(insuranceDetails);
+        console.log(insuranceDetails);
+        
+        return res.status(200).json({data:insuranceDetails,"message":"data fetched successfully"});
     } catch (e) {
         console.log(e);
         return res.status(500).json({
@@ -32,8 +72,7 @@ export const createInsuranceDetails = async (req, res) => {
     try {
         const {
             provider_id,
-            recipient_name,
-            recipient_ma,
+            recipient_id,
             doctor_id,
             prsrb_prov,
             pa,
@@ -49,8 +88,97 @@ export const createInsuranceDetails = async (req, res) => {
             insurance_status,
             mmis_entry,
             rsn,
-            comment_pa
+            comment_pa,
+            procedure_val,
         } = req.body;
+
+        // Check for existing insurance details for this recipient with overlapping dates
+        const existingDetails = await InsuranceDetails.findOne({
+            where: {
+                recipient_id,
+                to_service_date: {
+                    [sequelize.Op.gte]: from_service_date // to_service_date is greater than or equal to new from_service_date
+                },
+                from_service_date: {
+                    [sequelize.Op.lte]: to_service_date // from_service_date is less than or equal to new to_service_date
+                },
+                is_active: true // Only check for active contracts
+            }
+        });
+
+
+
+
+
+        // If an existing entry is found, update it
+        if (existingDetails) {
+            // Update the old entry to set is_current_active to 0
+            await InsuranceDetails.update(
+                { is_active: false }, // Set the old entry to inactive
+                { where: { ID: existingDetails.ID } }
+            );
+        }
+    
+        // Create a new insurance detail entry
+        const newInsuranceDetail = await InsuranceDetails.create({
+            provider_id,
+            recipient_id,
+            doctor_id,
+            prsrb_prov,
+            pa,
+            from_service_date,
+            to_service_date,
+            recipient_is,
+            procedure_code,
+            units:procedure_val,
+            plan_of_care,
+            number_of_days,
+            max_per_day,
+            max_per_day_unit,
+            insurance_status,
+            mmis_entry,
+            rsn,
+            comment_pa,
+            is_active: true
+        });
+
+        return res.status(201).json({data:newInsuranceDetail, success:true, "message":"New insurance created successfully"});
+    } catch (e) {
+        console.log(e);
+        return res.status(500).json({
+            message: "Failed to create insurance details",
+        });
+    }
+};
+
+
+
+export const updateInsuranceDetails = async (req, res) => {
+    try {
+        const {
+            provider_id,
+            recipient_id,
+            doctor_id,
+            prsrb_prov,
+            pa,
+            from_service_date,
+            to_service_date,
+            recipient_is,
+            procedure_code,
+            units,
+            plan_of_care,
+            number_of_days,
+            max_per_day,
+            max_per_day_unit,
+            insurance_status,
+            mmis_entry,
+            rsn,
+            comment_pa,
+            procedure_val
+        } = req.body;
+
+
+        const {id} = req.params; 
 
         // Check for existing insurance details for this recipient with overlapping dates
         const existingDetails = await InsuranceDetails.findOne({
@@ -75,11 +203,12 @@ export const createInsuranceDetails = async (req, res) => {
             );
         }
 
+        console.log("doctor id ", doctor_id);
+
         // Create a new insurance detail entry
-        const newInsuranceDetail = await InsuranceDetails.create({
+        const newInsuranceDetail = await InsuranceDetails.update({
             provider_id,
-            recipient_name,
-            recipient_ma,
+            recipient_id,
             doctor_id,
             prsrb_prov,
             pa,
@@ -87,7 +216,7 @@ export const createInsuranceDetails = async (req, res) => {
             to_service_date,
             recipient_is,
             procedure_code,
-            units,
+            units:procedure_val,
             plan_of_care,
             number_of_days,
             max_per_day,
@@ -95,11 +224,12 @@ export const createInsuranceDetails = async (req, res) => {
             insurance_status,
             mmis_entry,
             rsn,
-            comment_pa,
-            is_active: true
+            comment_pa
+        },{
+            where: { ID: id }
         });
 
-        return res.status(201).json(newInsuranceDetail);
+        return res.status(200).json({data:newInsuranceDetail,"success":true,"message":"Insurance details updated successfully"});
     } catch (e) {
         console.log(e);
         return res.status(500).json({
@@ -107,6 +237,8 @@ export const createInsuranceDetails = async (req, res) => {
         });
     }
 };
+
+
 
 
 export const addInsuranceProvider = async(req, res, next)=>{
@@ -149,8 +281,21 @@ export const addInsuranceProvider = async(req, res, next)=>{
 
 export const insuranceProvider = async(req, res)=>{
     try{
+        const {
+        is_default
+        } = req.query;
+    
+    let whereData = {}
 
-        const insuranceProvider = await InsuranceProvider.findAll();
+        if(is_default){
+            whereData = {
+                where :{
+                    is_default : is_default 
+                }
+            }
+        }
+
+        const insuranceProvider = await InsuranceProvider.findAll({...whereData});
 
         if(insuranceProvider.length>0){
            return res.status(200).json({ message: 'Insurance Provider added successfully', data: insuranceProvider });
@@ -163,6 +308,79 @@ export const insuranceProvider = async(req, res)=>{
     }
 }
 
+
+export const deleteInsurance = async (req, res) => {
+    try {
+        const { id } = req.params;
+
+        const result = await InsuranceDetails.destroy({
+            where: { ID: id }
+        });
+
+        if (result === 0) {
+            return res.status(404).json({ message: 'Provider not found' });
+        }
+
+        res.status(200).json({ message: 'Provider deleted successfully' });
+    } catch (error) {
+        res.status(500).json({ message: 'Error deleting provider', error: error.message });
+    }
+};
+
+
+export const singleInsuranceDetails = async(req, res)=>{
+    try{
+
+        const { id } =  req.params
+        console.log(id,"id");
+    
+        const insuranceProvider = await InsuranceDetails.findOne({
+            include: [
+                {
+                    model: InsuranceProvider,
+                    as: 'InsuranceProvider',
+                    attributes: ['provider_name'],
+                    required: true
+                },
+                {
+                    model: DoctorDetails,
+                    as: 'DoctorDetail',
+                    attributes: ['doctor_name',"doctor_phone_no"],
+                    required: true
+                }
+            ],
+            attributes: {
+                include: [
+                    [sequelize.literal('InsuranceProvider.provider_name'), 'provider_name'],
+                    [sequelize.literal('DoctorDetail.doctor_name'), 'doctor_name'],
+                    [sequelize.literal('DoctorDetail.doctor_phone_no'), 'doctor_number'],
+                    [sequelize.fn('DATE_FORMAT', sequelize.col('from_service_date'), '%Y-%m-%d'), 'from_service_date'],
+                    [sequelize.fn('DATE_FORMAT', sequelize.col('to_service_date'), '%Y-%m-%d'), 'to_service_date']
+                ]
+            },
+            where:{
+                ID:id
+            },
+            raw:true
+        });
+
+        if(Object.keys(insuranceProvider).length){
+           return res.status(200).json({ message: 'Insurance Details added successfully', data: insuranceProvider });
+        }else{
+            return res.status(204).json({ message: 'Insurance Details added successfully', data: [] });
+        }
+
+    }catch(error){
+        console.log(error);
+        res.status(500).json({ message: 'Error fetching provider', error: error.message });
+    }
+}
+
+/******
+ * ========================================================================================================
+ * 
+ * ========================================================================================================
+ */
 
 export const singleInsuranceProvider = async(req, res)=>{
     try{

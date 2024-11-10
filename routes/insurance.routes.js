@@ -2,6 +2,9 @@ import express from "express";
 import {
     getInsuranceDetails,
     createInsuranceDetails,
+    deleteInsurance,
+    updateInsuranceDetails,
+    singleInsuranceDetails,
     addInsuranceProvider,
     insuranceProvider,
     deleteProvider,
@@ -10,15 +13,17 @@ import {
 } from "../controllers/insurance.controller.js";
 
 import auth from "../middleware/auth.middleware.js";
-import {validateProvider} from "../middleware/insuranceDetail.middleware.js";
+import {validateProvider , validateInsuranceDetails, checkAndCreateDoctor, checkAndCreateRecipient} from "../middleware/insuranceDetail.middleware.js";
 import { upload, handleUploadError } from "../config/multer.js";
-import {validateInsuranceDetails} from "../middleware/insuranceDetail.middleware.js";
 
 const insuranceRouter  = express.Router();
 
-
 insuranceRouter.get("/", auth, getInsuranceDetails);
-insuranceRouter.post("/", auth, validateInsuranceDetails, createInsuranceDetails);
+insuranceRouter.get("/details/:id", auth, singleInsuranceDetails);
+insuranceRouter.post("/", auth, validateInsuranceDetails, checkAndCreateDoctor , checkAndCreateRecipient, createInsuranceDetails);
+insuranceRouter.patch("/:id", auth, validateInsuranceDetails, checkAndCreateDoctor, checkAndCreateRecipient, updateInsuranceDetails);
+insuranceRouter.delete("/:id", auth, deleteInsurance);
+
 
 //insurance provider routes
 insuranceRouter.get("/provider", auth, insuranceProvider); 

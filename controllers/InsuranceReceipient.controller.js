@@ -1,45 +1,61 @@
 import InsuranceReceipient from "../models/InsuranceReceipient.model.js"
-
+import InsuranceDetails from "../models/insuranceDetails.model.js";
+import sequelize,{Op} from "sequelize";
 // Get all insurance recipients
 export const getInsuranceReceipient = async (req, res) => {
     try {
-        // Destructure `is_default` from query parameters if provided
-        const { is_default } = req.query;
-
-        // Build the `where` condition based on query parameters
         const whereConditions = { is_deleted: false };
-        if (is_default !== undefined) {
-            whereConditions.is_default = is_default === 'true'; // Convert string to boolean
-        }
-
-        const recipients = await InsuranceRecipient.findAll({
+        const recipients = await InsuranceReceipient.findAll({
             where: whereConditions
         });
 
         return res.status(200).json({ data: recipients, message: "Data fetched successfully" });
     } catch (error) {
+        console.log(error)
         return res.status(500).json({ message: "Error occurred while trying to get the details" });
     }
 };
 
-// Get a single insurance recipient by ID
-export const getSingleInsuranceReceipient = async (req, res) => {
+
+export const getSingleInsuranceRecipient = async (req, res) => {
     const { id } = req.params; // Expecting the ID in the request parameters
+    const { get_insurance_details } = req.query;
+    let include = [];
+
+    if (get_insurance_details !== undefined) {
+        include = [
+            {
+                model: InsuranceDetails,
+                as: 'InsuranceDetails',
+                required: true,
+            }
+        ];
+    }
+
     try {
         const recipient = await InsuranceReceipient.findOne({
             where: {
-                ID: id,
+                id,
                 is_deleted: false
-            }
+            },
+            include,       
         });
+
         if (!recipient) {
             return res.status(404).json({ message: "Recipient not found" });
         }
-        return res.status(200).json({data:recipient,"message":"data fetched successfully"});
+
+        return res.status(200).json({
+            data: recipient,
+            message: "Data fetched successfully"
+        });
     } catch (error) {
-        return res.status(500).json({ message: "Error occurred while trying to get the details" });
+        console.log(error)
+        return res.status(500).json({
+            message: "Error occurred while trying to get the details"
+        });
     }
-}
+};
 
 // Create a new insurance recipient
 export const createInsuranceReceipient = async (req, res) => {

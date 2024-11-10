@@ -2,33 +2,37 @@ import DoctorDetails from "../models/doctors.model.js";
 
 const getDoctors = async (req, res, next) => {
     try {
-        // Extract query parameters for filtering, sorting, and limiting
-        const { sortField = 'doctor_name', sortOrder = 'asc', limit = 10, page = 1 } = req.query;
-
-        // Prepare options for Sequelize query
-        const options = {
-            where: { is_deleted: false }, // Only get active (not deleted) doctors
-            order: [[sortField, sortOrder]], // Sort based on query parameters
-            limit: parseInt(limit), // Limit the number of results
-            offset: (parseInt(page) - 1) * parseInt(limit), // Calculate the offset
-        };
-
-        // Fetch doctors from database with the specified options
-        const doctors = await DoctorDetails.findAll(options);
-
-        return res.status(200).json({
-            message: "Doctors retrieved successfully",
-            success: true,
-            data: doctors,
-        });
+      // Extract query parameters for filtering, sorting, and limiting
+      const { sortField = 'doctor_name', sortOrder = 'asc', limit = 10, page = 1 } = req.query;
+  
+      // Prepare options for Sequelize query
+      const options = {
+        where: { is_deleted: 0 }, // Only get active (not deleted) doctors
+        order: [[sortField, sortOrder]], // Sort based on query parameters
+      };
+  
+      // If limit is not 'all', add limit and offset options
+      if (limit !== 'all') {
+        options.limit = parseInt(limit); // Limit the number of results
+        options.offset = (parseInt(page) - 1) * parseInt(limit); // Calculate the offset
+      }
+  
+      // Fetch doctors from database with the specified options
+      const doctors = await DoctorDetails.findAll(options);
+  
+      return res.status(200).json({
+        message: "Doctors retrieved successfully",
+        success: true,
+        data: doctors,
+      });
     } catch (e) {
-        console.error(e);
-        return res.status(500).json({
-            message: "Failed to get the doctors",
-            success: false,
-        });
+      console.error(e);
+      return res.status(500).json({
+        message: "Failed to get the doctors",
+        success: false,
+      });
     }
-};
+  };
 
 const createDoctors = async (req, res, next) => {
     try {

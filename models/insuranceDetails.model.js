@@ -2,6 +2,7 @@ import { DataTypes , Sequelize} from 'sequelize';
 import sequelize from "../config/db.js";
 import InsuranceProvider from './InsuranceProvider.model.js';
 import DoctorDetails from './doctors.model.js'; // Ensure the correct import path
+import InsuranceReceipient from "./InsuranceReceipient.model.js"
 
 const InsuranceDetails = sequelize.define("InsuranceDetails", {
     ID: {
@@ -14,12 +15,8 @@ const InsuranceDetails = sequelize.define("InsuranceDetails", {
         type: DataTypes.INTEGER,
         allowNull: false,
     },
-    recipient_name: {
-        type: DataTypes.STRING,
-        allowNull: false,
-    },
-    recipient_ma: {
-        type: DataTypes.STRING,
+    recipient_id: {
+        type: DataTypes.INTEGER,
         allowNull: false,
     },
     doctor_id: {
@@ -124,6 +121,18 @@ DoctorDetails.hasMany(InsuranceDetails, {
 
 InsuranceDetails.belongsTo(DoctorDetails, {
     foreignKey: 'doctor_id',
+    targetKey: 'ID'
+});
+
+// link insurance details to receipients 
+// Link InsuranceDetails to DoctorDetails
+InsuranceReceipient.hasMany(InsuranceDetails, {
+    foreignKey: 'recipient_id',
+    sourceKey: 'ID'
+});
+
+InsuranceDetails.belongsTo(InsuranceReceipient, {
+    foreignKey: 'recipient_id',
     targetKey: 'ID'
 });
 
