@@ -16,4 +16,6 @@ InsuranceReceipientRouter.get("/:id", auth, getSingleInsuranceRecipient);
 InsuranceReceipientRouter.patch("/:id", auth, updateInsuranceReceipient);
 InsuranceReceipientRouter.delete("/:id", auth, deleteInsuranceReceipient);
 
+
+
 export default InsuranceReceipientRouter;

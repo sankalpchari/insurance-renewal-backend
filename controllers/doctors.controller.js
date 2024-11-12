@@ -1,38 +1,61 @@
 import DoctorDetails from "../models/doctors.model.js";
+import sequelize from "sequelize";
 
 const getDoctors = async (req, res, next) => {
     try {
-      // Extract query parameters for filtering, sorting, and limiting
-      const { sortField = 'doctor_name', sortOrder = 'asc', limit = 10, page = 1 } = req.query;
+      // Extract query parameters for filtering, sorting, searching, and pagination
+      const {
+        search = '',
+        sortField = 'doctor_name',
+        sortOrder = 'asc',
+        limit = 10,
+        page = 1
+      } = req.query;
   
       // Prepare options for Sequelize query
       const options = {
-        where: { is_deleted: 0 }, // Only get active (not deleted) doctors
+        where: {
+          is_deleted: 0, // Only get active (not deleted) doctors
+          ...(search && {
+            [sequelize.Op.or]: [
+              { doctor_name: { [sequelize.Op.like]: `%${search}%` } },
+              { doctor_phone_no: { [sequelize.Op.like]: `%${search}%` } }
+            ]
+          })
+        },
         order: [[sortField, sortOrder]], // Sort based on query parameters
+        limit: limit !== 'all' ? parseInt(limit) : undefined, // Limit results if not 'all'
+        offset: limit !== 'all' ? (parseInt(page) - 1) * parseInt(limit) : undefined // Calculate offset for pagination
       };
   
-      // If limit is not 'all', add limit and offset options
-      if (limit !== 'all') {
-        options.limit = parseInt(limit); // Limit the number of results
-        options.offset = (parseInt(page) - 1) * parseInt(limit); // Calculate the offset
-      }
+      // Fetch doctors and count with specified options
+      const { rows: doctors, count: totalRecords } = await DoctorDetails.findAndCountAll(options);
   
-      // Fetch doctors from database with the specified options
-      const doctors = await DoctorDetails.findAll(options);
+      // Calculate pagination details
+      const recordsPerPage = limit !== 'all' ? parseInt(limit) : totalRecords;
+      const totalPages = limit !== 'all' ? Math.ceil(totalRecords / recordsPerPage) : 1;
+      const currentPage = limit !== 'all' ? parseInt(page) : 1;
   
       return res.status(200).json({
         message: "Doctors retrieved successfully",
         success: true,
         data: doctors,
+        pagination: {
+          totalRecords,
+          totalPages,
+          recordsPerPage,
+          currentPage
+        }
       });
     } catch (e) {
       console.error(e);
       return res.status(500).json({
         message: "Failed to get the doctors",
-        success: false,
+        success: false
       });
     }
-  };
+};
+  
 
 const createDoctors = async (req, res, next) => {
     try {

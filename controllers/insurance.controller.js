@@ -1,27 +1,70 @@
 import InsuranceDetails from "../models/insuranceDetails.model.js";
 import InsuranceProvider from "../models/InsuranceProvider.model.js";
 import DoctorDetails from "../models/doctors.model.js";
+import InsuranceReceipient from "../models/InsuranceReceipient.model.js";
 import sequelize from "sequelize";
 import { raw } from "mysql2";
 
 export const getInsuranceDetails = async (req, res) => {
     try {
-
         const {
+            searchTerm,
+            fromDate,
+            toDate,
+            sortBy = 'date',  // default sort by 'date'
+            sortOrder = 'asc', // default sort order 'asc'
+            recordsPerPage = 10, // default records per page
+            page = 1, // default to first page
             is_default
         } = req.query;
-        let whereData = {}
 
-        if(is_default){
-            whereData = {
-                where :{
-                    is_default : is_default 
-                }
-            }
+        // Define where conditions based on filters
+        let whereData = {
+            where: {},
+        };
+
+        // Filter by is_default if provided
+        if (is_default) {
+            whereData.where.is_default = is_default;
         }
-        const currentDate = new Date();
 
-        const insuranceDetails = await InsuranceDetails.findAll({
+        // Search by term if provided (assuming searching by recipient name or MA number)
+        if (searchTerm) {
+            whereData.where[sequelize.Op.or] = [
+                { '$InsuranceReceipient.name$': { [sequelize.Op.like]: `%${searchTerm}%` } },
+                { '$InsuranceReceipient.receipient_ma$': { [sequelize.Op.like]: `%${searchTerm}%` } }
+            ];
+        }
+
+        // Filter by date range if provided
+        if (fromDate && toDate) {
+            whereData.where.from_service_date = {
+                [sequelize.Op.between]: [fromDate, toDate]
+            };
+        } else if (fromDate) {
+            whereData.where.from_service_date = {
+                [sequelize.Op.gte]: fromDate
+            };
+        } else if (toDate) {
+            whereData.where.from_service_date = {
+                [sequelize.Op.lte]: toDate
+            };
+        }
+
+        // Sorting logic
+        let order = [];
+        if (sortBy === 'date') {
+            order.push(['from_service_date', sortOrder]);
+        } else if (sortBy === 'name') {
+            order.push([sequelize.col('InsuranceReceipient.name'), sortOrder]);
+        }
+
+        // Calculate offset based on current page and records per page
+        const limit = parseInt(recordsPerPage);
+        const offset = (parseInt(page) - 1) * limit;
+
+        // Fetch insurance details with filters, sorting, and pagination
+        const { rows: insuranceDetails, count: totalRecords } = await InsuranceDetails.findAndCountAll({
             include: [
                 {
                     model: InsuranceProvider,
@@ -32,33 +75,45 @@ export const getInsuranceDetails = async (req, res) => {
                 {
                     model: DoctorDetails,
                     as: 'DoctorDetail',
-                    attributes: ['doctor_name',"doctor_phone_no"],
+                    attributes: ['doctor_name', "doctor_phone_no"],
                     required: true,
-                
+                },
+                {
+                    model: InsuranceReceipient,
+                    as: 'InsuranceReceipient',
+                    required: true,
                 }
             ],
             attributes: {
                 include: [
                     [sequelize.col('InsuranceProvider.provider_name'), 'provider_name'],
+                    [sequelize.col('InsuranceReceipient.name'), 'recipient_name'],
+                    [sequelize.col('InsuranceReceipient.receipient_ma'), 'recipient_ma'],
                     [sequelize.fn('DATE_FORMAT', sequelize.col('from_service_date'), '%Y-%m-%d'), 'from_service_date'],
                     [sequelize.fn('DATE_FORMAT', sequelize.col('to_service_date'), '%Y-%m-%d'), 'to_service_date']
                 ]
             },
-            order: [
-                [
-                    sequelize.literal(
-                        `ABS(DATEDIFF(to_service_date, '${currentDate.toISOString().split('T')[0]}'))`
-                    ),
-                    'ASC'
-                ]
-            ],
-            ...whereData,
+            where: whereData.where,
+            order: order,
+            limit: limit,
+            offset: offset,
             raw: true
         });
 
-        console.log(insuranceDetails);
-        
-        return res.status(200).json({data:insuranceDetails,"message":"data fetched successfully"});
+        // Calculate pagination details
+        const totalPages = Math.ceil(totalRecords / limit);
+
+        // Return the data and pagination info
+        return res.status(200).json({
+            data: insuranceDetails,
+            pagination: {
+                totalRecords: totalRecords,
+                totalPages: totalPages,
+                recordsPerPage: limit,
+                currentPage: parseInt(page)
+            },
+            message: "Data fetched successfully"
+        });
     } catch (e) {
         console.log(e);
         return res.status(500).json({
@@ -66,6 +121,7 @@ export const getInsuranceDetails = async (req, res) => {
         });
     }
 };
+
 
 
 export const createInsuranceDetails = async (req, res) => {
