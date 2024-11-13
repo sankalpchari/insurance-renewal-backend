@@ -1,6 +1,6 @@
 import InsuranceReceipient from "../models/InsuranceReceipient.model.js"
 import InsuranceDetails from "../models/insuranceDetails.model.js";
-import sequelize,{Op} from "sequelize";
+import sequelize,{Op, fn, col} from "sequelize";
 // Get all insurance recipients
 export const getInsuranceReceipient = async (req, res) => {
     try {
@@ -51,6 +51,13 @@ export const getInsuranceReceipient = async (req, res) => {
         // Fetch the filtered and sorted records
         const recipients = await InsuranceReceipient.findAll({
             where: whereConditions,
+            attributes: [
+                "ID",
+                "name",
+                "receipient_ma",
+                "is_deleted",
+                [fn('DATE', col('date_created')), 'date_created'], // Cast date_created to date only
+            ],
             order: [[sort_by, sort_order]],
             limit: limit,
             offset: offset,

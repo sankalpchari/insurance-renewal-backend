@@ -162,6 +162,13 @@ export const providerSchema = Joi.object({
     provider_code: Joi.string()
         .required()
         .messages({'string.empty': 'Provider code is required'}),
+    provider_email: Joi.string()
+        .email()
+        .required()
+        .messages({
+            'string.empty': 'Provider email is required',
+            'string.email': 'Provider email must be a valid email address'
+        })
 });
 
 

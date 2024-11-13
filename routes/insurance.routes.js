@@ -9,7 +9,8 @@ import {
     insuranceProvider,
     deleteProvider,
     updateProvider,
-    singleInsuranceProvider
+    singleInsuranceProvider,
+    generatePdf
 } from "../controllers/insurance.controller.js";
 
 import auth from "../middleware/auth.middleware.js";
@@ -23,6 +24,7 @@ insuranceRouter.get("/details/:id", auth, singleInsuranceDetails);
 insuranceRouter.post("/", auth, validateInsuranceDetails, checkAndCreateDoctor , checkAndCreateRecipient, createInsuranceDetails);
 insuranceRouter.patch("/:id", auth, validateInsuranceDetails, checkAndCreateDoctor, checkAndCreateRecipient, updateInsuranceDetails);
 insuranceRouter.delete("/:id", auth, deleteInsurance);
+insuranceRouter.post("/generate-pdf/:id", auth, generatePdf);
 
 
 //insurance provider routes

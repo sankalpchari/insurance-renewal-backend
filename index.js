@@ -5,7 +5,7 @@ import express from "express";
 import cors from "cors";
 import "./models/initalizeModels.js";
 import path from "path"
-import { authRouter, doctorRoutes, insuranceRouter, InsuranceReceipientRouter} from "./routes/routes.js"
+import { authRouter, doctorRoutes, insuranceRouter, InsuranceReceipientRouter, userRoutes} from "./routes/routes.js"
 import { fileURLToPath } from 'url';
 // import "./fakerjs/createDoctors.js"
 
@@ -32,9 +32,9 @@ app.use(`${process.env.URL_PREFIX}/auth`,authRouter);
 app.use(`${process.env.URL_PREFIX}/doctors`,doctorRoutes);
 app.use(`${process.env.URL_PREFIX}/insurance`,insuranceRouter);
 app.use(`${process.env.URL_PREFIX}/insurance-receipient`, InsuranceReceipientRouter);
-// future use
+app.use(`${process.env.URL_PREFIX}/users`, userRoutes)
 
-// app.use(`${process.env.URL_PREFIX}/auth`,authRouter)
+// future use
 // app.use(`${process.env.URL_PREFIX}/auth`,authRouter)
 // app.use(`${process.env.URL_PREFIX}/auth`,authRouter)
 

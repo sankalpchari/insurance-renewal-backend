@@ -96,6 +96,14 @@ const InsuranceDetails = sequelize.define("InsuranceDetails", {
     is_active:{
         type:DataTypes.BOOLEAN,
         defaultValue: true, 
+    },
+    is_email_sent:{
+        type:DataTypes.BOOLEAN,
+        defaultValue: false, 
+    },
+    pdf_location:{
+        type:DataTypes.STRING,
+        defaultValue: null, 
     }
 }, {
     tableName: 'insurance_details',

@@ -26,7 +26,10 @@ const InsuranceProvider = sequelize.define("InsuranceProvider", {
     },
     logo_location: {
       type: DataTypes.STRING,
-      unique: true, // Ensure email is unique
+      allowNull: false,
+    },
+    provider_email: {
+      type: DataTypes.STRING,
       allowNull: false,
     },
     is_deleted: {

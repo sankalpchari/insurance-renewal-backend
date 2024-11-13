@@ -2,7 +2,7 @@ import InsuranceDetails from "../models/insuranceDetails.model.js";
 import InsuranceProvider from "../models/InsuranceProvider.model.js";
 import DoctorDetails from "../models/doctors.model.js";
 import InsuranceReceipient from "../models/InsuranceReceipient.model.js";
-import sequelize from "sequelize";
+import sequelize,{ fn, col} from "sequelize";
 import { raw } from "mysql2";
 
 export const getInsuranceDetails = async (req, res) => {
@@ -294,24 +294,79 @@ export const updateInsuranceDetails = async (req, res) => {
     }
 };
 
+export const generatePdf = async(req, res)=>{
+    try{
+        const {id} = req.params;
+
+        const insuranceProvider = await InsuranceDetails.findOne({
+            include: [
+                {  model: InsuranceProvider,  as: 'InsuranceProvider',  attributes: ['provider_name'],  required: true },
+                { model: DoctorDetails, as: 'DoctorDetail', attributes: ['doctor_name',"doctor_phone_no"], required: true}
+            ],
+            attributes: {
+                include: [ [sequelize.literal('InsuranceProvider.provider_name'), 'provider_name'], 
+                [sequelize.literal('DoctorDetail.doctor_name'), 'doctor_name'], 
+                [sequelize.literal('DoctorDetail.doctor_phone_no'), 'doctor_number'], 
+                [sequelize.fn('DATE_FORMAT',sequelize.col('from_service_date'), '%Y-%m-%d'), 'from_service_date'], 
+                [sequelize.fn('DATE_FORMAT', sequelize.col('to_service_date'), '%Y-%m-%d'), 'to_service_date']
+            ]
+            },
+            where:{
+                ID:id
+            },
+            raw:true
+        });
+
+        if(insuranceProvider){
+
+        }else{
+            return res.status(404).json({
+                message: "Insurance details not found",
+            });  
+        }
+
+            
+
+    }catch(e){
+        console.log(e);
+        return res.status(500).json({
+            message: "Failed to generate pdf",
+        });  
+    }
 
 
+}
+
+
+/******
+ * 
+ * 
+ * 
+ * 
+ * 
+ * 
+ * 
+ * 
+ * 
+ */
 
 export const addInsuranceProvider = async(req, res, next)=>{
     try {
         // Destructure form data from req.body
-        const { provider_name, phone_no_1, phone_no_2, is_default, provider_code  } = req.body;
+        const { provider_name, phone_no_1, phone_no_2, is_default, provider_code, provider_email  } = req.body;
 
         // Check if file was uploaded
         const logoLocation = req.file ? `/uploads/${req.file.filename}` : null;
         const path2 = logoLocation.replace(/\\/g, "/");
 
-        if(is_default){
+
+        if(is_default && is_default.toLowerCase() === "true"){
              // default value set
+             console.log(is_default,"is_default")
              console.log("is default set");
              await InsuranceProvider.update(
                 { is_default: false },
-                { where: {} } // Empty condition updates all records
+                { where: {} }
             );
             
         }
@@ -323,7 +378,8 @@ export const addInsuranceProvider = async(req, res, next)=>{
             phone_no_2,
             logo_location: path2,
             is_default,
-            provider_code
+            provider_code,
+            provider_email
         });
 
         // Respond with success message
@@ -335,35 +391,46 @@ export const addInsuranceProvider = async(req, res, next)=>{
 }
 
 
-export const insuranceProvider = async(req, res)=>{
-    try{
-        const {
-        is_default
-        } = req.query;
-    
-    let whereData = {}
+export const insuranceProvider = async (req, res) => {
+    try {
+        const { is_default } = req.query;
 
-        if(is_default){
+        let whereData = {};
+
+        if (is_default) {
             whereData = {
-                where :{
-                    is_default : is_default 
+                where: {
+                    is_default: is_default
                 }
-            }
+            };
         }
 
-        const insuranceProvider = await InsuranceProvider.findAll({...whereData});
+        const insuranceProvider = await InsuranceProvider.findAll({
+            ...whereData,
+            attributes: [
+                "ID",
+                "provider_name",
+                "provider_code",
+                "phone_no_1",
+                "phone_no_2",
+                "logo_location",
+                "is_deleted",
+                "is_default",
+                "provider_email",
+                [fn('DATE', col('date_created')), 'date_created'], // Cast date_created to date only
+            ]
+        });
 
-        if(insuranceProvider.length>0){
-           return res.status(200).json({ message: 'Insurance Provider added successfully', data: insuranceProvider });
-        }else{
-            return res.status(204).json({ message: 'Insurance Provider added successfully', data: [] });
+        if (insuranceProvider.length > 0) {
+            return res.status(200).json({ message: 'Insurance Provider fetched successfully', data: insuranceProvider });
+        } else {
+            return res.status(204).json({ message: 'No insurance providers found', data: [] });
         }
 
-    }catch(error){
+    } catch (error) {
         res.status(500).json({ message: 'Error fetching provider', error: error.message });
     }
-}
-
+};
 
 export const deleteInsurance = async (req, res) => {
     try {
@@ -470,6 +537,9 @@ export const updateProvider = async (req, res) => {
     try {
         const { id } = req.params;
         const updateData = req.body;
+        const  is_default  = updateData.is_default.toLowerCase() === "true"
+       
+
         if (req.file) {
             const logoLocation = req.file ? `/uploads/${req.file.filename}` : null;
             const path2 = logoLocation.replace(/\\/g, "/");
@@ -480,8 +550,19 @@ export const updateProvider = async (req, res) => {
             return res.status(400).json({ message: "Provider ID is required" });
         }
 
+        if(is_default){
+            // default value set
+            console.log(is_default,"is_default")
+            console.log("is default set");
+            await InsuranceProvider.update(
+               { is_default: false },
+               { where: {} }
+           );
+           
+       }
+
         // Update the provider in the database
-        const [updated] = await InsuranceProvider.update({...updateData}, {
+        const [updated] = await InsuranceProvider.update({...updateData, is_default}, {
             where: { ID: id }
         });
 
