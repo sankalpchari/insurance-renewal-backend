@@ -17,12 +17,16 @@
     "cors": "^2.8.5",
     "dotenv": "^16.4.5",
     "express": "^4.21.1",
+    "fs-extra": "^11.2.0",
+    "handlebars": "^4.7.8",
+    "intl": "^1.2.5",
     "joi": "^17.13.3",
     "jsonwebtoken": "^9.0.2",
     "multer": "^1.4.5-lts.1",
     "mysql2": "^3.11.3",
-    "nodemailer": "^6.9.15",
+    "nodemailer": "^6.9.16",
     "pdfkit": "^0.15.1",
+    "puppeteer": "^23.8.0",
     "sequelize": "^6.37.5"
   },
   "devDependencies": {

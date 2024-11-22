@@ -10,7 +10,9 @@ import {
     deleteProvider,
     updateProvider,
     singleInsuranceProvider,
-    generatePdf
+    generatePdf, 
+    renewInsurance,
+    downloadPDF
 } from "../controllers/insurance.controller.js";
 
 import auth from "../middleware/auth.middleware.js";
@@ -24,7 +26,13 @@ insuranceRouter.get("/details/:id", auth, singleInsuranceDetails);
 insuranceRouter.post("/", auth, validateInsuranceDetails, checkAndCreateDoctor , checkAndCreateRecipient, createInsuranceDetails);
 insuranceRouter.patch("/:id", auth, validateInsuranceDetails, checkAndCreateDoctor, checkAndCreateRecipient, updateInsuranceDetails);
 insuranceRouter.delete("/:id", auth, deleteInsurance);
-insuranceRouter.post("/generate-pdf/:id", auth, generatePdf);
+
+insuranceRouter.post("/renew/:type/:id", auth, renewInsurance);
+
+
+// PDF routes 
+insuranceRouter.get("/generate-pdf/:id", auth, generatePdf);
+insuranceRouter.get("/download-pdf/:id", auth, downloadPDF);
 
 
 //insurance provider routes

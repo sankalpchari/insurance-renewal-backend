@@ -53,6 +53,12 @@ const User = sequelize.define("User", {
 }, {
     tableName: 'users',
     timestamps: false,
+    indexes: [
+        {
+          unique: true,
+          fields: ["ID", 'email'],
+        }
+      ]
 });
 
 // Before creating or updating a user, hash the password and lowercase email/username

@@ -91,15 +91,18 @@ export const getSingleInsuranceRecipient = async (req, res) => {
     const { id } = req.params; // Expecting the ID in the request parameters
     const { get_insurance_details } = req.query;
     let include = [];
+    let order = [];
 
     if (get_insurance_details !== undefined) {
         include = [
             {
                 model: InsuranceDetails,
                 as: 'InsuranceDetails',
-                required: true,
+                required: false,
             }
         ];
+
+        order = [[{ model: InsuranceDetails },'is_active','DESC']]
     }
 
     try {
@@ -108,7 +111,8 @@ export const getSingleInsuranceRecipient = async (req, res) => {
                 id,
                 is_deleted: false
             },
-            include,       
+            include,
+            order    
         });
 
         if (!recipient) {
@@ -126,6 +130,7 @@ export const getSingleInsuranceRecipient = async (req, res) => {
         });
     }
 };
+
 
 // Create a new insurance recipient
 export const createInsuranceReceipient = async (req, res) => {

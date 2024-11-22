@@ -104,6 +104,11 @@ const InsuranceDetails = sequelize.define("InsuranceDetails", {
     pdf_location:{
         type:DataTypes.STRING,
         defaultValue: null, 
+    },
+    created_date:{
+        type: DataTypes.DATE,
+        allowNull: false,
+        defaultValue: Sequelize.literal('CURRENT_TIMESTAMP'),
     }
 }, {
     tableName: 'insurance_details',

@@ -2,8 +2,9 @@ import InsuranceDetails from "../models/insuranceDetails.model.js";
 import InsuranceProvider from "../models/InsuranceProvider.model.js";
 import DoctorDetails from "../models/doctors.model.js";
 import InsuranceReceipient from "../models/InsuranceReceipient.model.js";
-import sequelize,{ fn, col} from "sequelize";
+import sequelize,{ fn, col, where} from "sequelize";
 import { raw } from "mysql2";
+import { generatePDF } from "../services/pdfService.js";
 
 export const getInsuranceDetails = async (req, res) => {
     try {
@@ -298,45 +299,125 @@ export const generatePdf = async(req, res)=>{
     try{
         const {id} = req.params;
 
-        const insuranceProvider = await InsuranceDetails.findOne({
+        let insuranceDetails = await InsuranceDetails.findOne({
             include: [
-                {  model: InsuranceProvider,  as: 'InsuranceProvider',  attributes: ['provider_name'],  required: true },
-                { model: DoctorDetails, as: 'DoctorDetail', attributes: ['doctor_name',"doctor_phone_no"], required: true}
+                {  model: InsuranceProvider,  as: 'InsuranceProvider',  required: true },
+                { model: DoctorDetails, as: 'DoctorDetail', required: true},
+                { model: InsuranceReceipient , as: 'InsuranceReceipient', required: true}
             ],
             attributes: {
-                include: [ [sequelize.literal('InsuranceProvider.provider_name'), 'provider_name'], 
-                [sequelize.literal('DoctorDetail.doctor_name'), 'doctor_name'], 
-                [sequelize.literal('DoctorDetail.doctor_phone_no'), 'doctor_number'], 
+                include: [ 
                 [sequelize.fn('DATE_FORMAT',sequelize.col('from_service_date'), '%Y-%m-%d'), 'from_service_date'], 
                 [sequelize.fn('DATE_FORMAT', sequelize.col('to_service_date'), '%Y-%m-%d'), 'to_service_date']
             ]
             },
             where:{
                 ID:id
-            },
-            raw:true
+            }
         });
 
-        if(insuranceProvider){
+
+        insuranceDetails = await insuranceDetails.toJSON(); 
+
+        if(insuranceDetails){
+            console.log(insuranceDetails);
+            const dateNow = Date.now();
+            const pdfName = `${insuranceDetails.InsuranceReceipient.name}-${insuranceDetails.InsuranceReceipient.receipient_ma}-${dateNow}.pdf`
+            const pdf =  await generatePDF(pdfName,insuranceDetails);
+
+            if(pdf){
+                await InsuranceDetails.update(
+                    { pdf_location: pdf },
+                    {
+                        where: {
+                            ID:id
+                        },
+                    }
+                );
+            }
+            return res.status(200).json({"test":"test"});
 
         }else{
             return res.status(404).json({
                 message: "Insurance details not found",
             });  
         }
-
-            
-
     }catch(e){
         console.log(e);
         return res.status(500).json({
             message: "Failed to generate pdf",
         });  
     }
-
-
 }
 
+export const downloadPDF =  async(req, res)=>{
+    try{
+        console.log("download PDF fn called");
+        const {id} = req.params;
+
+        let insuranceDetails = await InsuranceDetails.findOne({
+            include: [
+                {  model: InsuranceProvider,  as: 'InsuranceProvider',  required: true },
+                { model: DoctorDetails, as: 'DoctorDetail', required: true},
+                { model: InsuranceReceipient , as: 'InsuranceReceipient', required: true}
+            ],
+            attributes: {
+                include: [ 
+                [sequelize.fn('DATE_FORMAT',sequelize.col('from_service_date'), '%Y-%m-%d'), 'from_service_date'], 
+                [sequelize.fn('DATE_FORMAT', sequelize.col('to_service_date'), '%Y-%m-%d'), 'to_service_date']
+            ]
+            },
+            where:{
+                ID:id
+            }
+        });
+
+        insuranceDetails = await insuranceDetails.toJSON(); 
+        if(insuranceDetails){
+            let URL = ""
+            if(insuranceDetails?.pdf_location){
+                URL =  insuranceDetails?.pdf_location;
+            }else{
+                const dateNow = Date.now();
+                const pdfName = `${insuranceDetails.InsuranceReceipient.name}-${insuranceDetails.InsuranceReceipient.receipient_ma}-${dateNow}.pdf`
+                const pdf =  await generatePDF(pdfName,insuranceDetails);
+                if(pdf){
+                    await InsuranceDetails.update(
+                        { pdf_location: pdf },
+                        {
+                            where: {
+                                ID:id
+                            },
+                        }
+                    );
+                }
+
+                URL = pdf
+            }
+
+            const downloaadUrl = (process.env.BACKEND_URL +"/"+ URL);
+
+            return res.status(200).json({
+                message: "PDF link found",
+                data : downloaadUrl,
+                success:true
+            }); 
+
+        }else{
+            return res.status(404).json({
+                message: "Insurance details not found",
+                success:false
+            });  
+        }
+
+
+
+    }catch(error){
+        return res.status(500).json({
+            message: "Failed to download pdf",
+        });  
+    }
+}
 
 /******
  * 
@@ -400,10 +481,27 @@ export const insuranceProvider = async (req, res) => {
         if (is_default) {
             whereData = {
                 where: {
-                    is_default: is_default
+                    is_default: is_default ? 1 : 0
                 }
             };
         }
+
+        console.log({
+            ...whereData,
+            attributes: [
+                "ID",
+                "provider_name",
+                "provider_code",
+                "phone_no_1",
+                "phone_no_2",
+                "logo_location",
+                "is_deleted",
+                "is_default",
+                "provider_email",
+                [fn('DATE', col('date_created')), 'date_created'], // Cast date_created to date only
+            ]
+        })
+
 
         const insuranceProvider = await InsuranceProvider.findAll({
             ...whereData,
@@ -420,6 +518,8 @@ export const insuranceProvider = async (req, res) => {
                 [fn('DATE', col('date_created')), 'date_created'], // Cast date_created to date only
             ]
         });
+
+        console.log(insuranceProvider,"insuranceProvider")
 
         if (insuranceProvider.length > 0) {
             return res.status(200).json({ message: 'Insurance Provider fetched successfully', data: insuranceProvider });
@@ -470,6 +570,12 @@ export const singleInsuranceDetails = async(req, res)=>{
                     as: 'DoctorDetail',
                     attributes: ['doctor_name',"doctor_phone_no"],
                     required: true
+                },
+                { 
+                    model: InsuranceReceipient , 
+                    as: 'InsuranceReceipient', 
+                    required: true,
+                    attributes:["name","receipient_ma"]
                 }
             ],
             attributes: {
@@ -477,6 +583,8 @@ export const singleInsuranceDetails = async(req, res)=>{
                     [sequelize.literal('InsuranceProvider.provider_name'), 'provider_name'],
                     [sequelize.literal('DoctorDetail.doctor_name'), 'doctor_name'],
                     [sequelize.literal('DoctorDetail.doctor_phone_no'), 'doctor_number'],
+                    [sequelize.literal('InsuranceReceipient.name'), 'recipient_name'],
+                    [sequelize.literal('InsuranceReceipient.receipient_ma'), 'recipient_ma'],
                     [sequelize.fn('DATE_FORMAT', sequelize.col('from_service_date'), '%Y-%m-%d'), 'from_service_date'],
                     [sequelize.fn('DATE_FORMAT', sequelize.col('to_service_date'), '%Y-%m-%d'), 'to_service_date']
                 ]
@@ -499,6 +607,64 @@ export const singleInsuranceDetails = async(req, res)=>{
     }
 }
 
+export const renewInsurance = async(req, res)=>{
+    try{
+
+        const {type, id} = req.params;
+
+
+        switch(type){
+            case "simple":
+                    const insurance = await InsuranceDetails.findOne({
+                        where:{
+                            ID:id
+                        },
+                        raw:true
+                    })   
+                    
+                    if(insurance){
+                        const { from_service_date, plan_of_care, to_service_date } = req.body;
+                        console.log(insurance,"insurance")
+                        await InsuranceDetails.update(
+                            { is_active: 0 },
+                            { where: { recipient_id: insurance.recipient_id } }
+                        );
+
+                        delete insurance.ID;
+
+                        const newInsurance = await InsuranceDetails.create({
+                            ...insurance,
+                            from_service_date: insurance.from_service_date,
+                            plan_of_care: insurance.plan_of_care,
+                            to_service_date: insurance.to_service_date,
+                            pdf_location:"",
+                            is_active : 1
+                        });
+
+                        return res.status(200).json({ message: 'Insurance renewed successfully for the customer', success:true}); 
+
+
+                    }else{
+                        return res.status(404).json({ message: 'Cannot find the insurance', success:false});
+                    }
+
+
+                break;
+            case "complex":
+                    console.log("complex form");
+                break;
+            default:
+                return res.status(400).json({ message: 'Error fetching provider', success:false});
+        }
+
+    }catch(error){
+        console.log(error);
+        return res.status(500).json({ message: 'Error fetching provider', error: error.message, success:false });
+    }
+}
+
+
+
 /******
  * ========================================================================================================
  * 
@@ -516,7 +682,6 @@ export const singleInsuranceProvider = async(req, res)=>{
                 ID:id
             }
         });
-
 
         console.log(insuranceProvider);
 
