@@ -3,6 +3,7 @@ import path from 'path';
 import puppeteer from 'puppeteer';
 import Handlebars from 'handlebars';
 import Intl from "intl";
+import PDFMerger from 'pdf-merger-js';
 
 export async function generatePDF(outputFile, data) {
   try {
@@ -71,7 +72,7 @@ export async function generatePDF(outputFile, data) {
     max_per_day : data.max_per_day,
     units : data.max_per_day_unit,
     comments:data.comment ? data.comment:"",
-    status: data?.status || "",
+    status: data?.insurance_status || "",
     mmis_entry_number: data.mmis_entry,
     rsn: data.rsn,
     pa_number: data.comment_pa,
@@ -101,3 +102,46 @@ export async function generatePDF(outputFile, data) {
     return false;
   }
 }
+
+
+export const generateBulkPDF = async (req, res, next) => {
+  try {
+    const { pdfRoutes } = req; // Retrieve PDF routes from the previous middleware
+    const rootPath = process.cwd();
+    // Ensure the 'combined' folder exists
+    const combinedFolderPath = path.resolve(path.join(rootPath, 'assets', 'combined'));
+    if (!fs.existsSync(combinedFolderPath)) {
+      fs.mkdirSync(combinedFolderPath, { recursive: true });
+    }
+
+    // Generate a timestamped filename
+    const timestamp = new Date().toISOString().replace(/:/g, '-'); // Replace ':' to avoid issues in file names
+    const outputFilename = `combined_pdf_${timestamp}.pdf`;
+    const outputPath = path.join(combinedFolderPath, outputFilename);
+
+    // Initialize the PDF merger
+    const merger = new PDFMerger();
+
+    // Add each PDF file to the merger
+    for (const pdfPath of pdfRoutes) {
+      console.log(pdfPath);
+      await merger.add(pdfPath);
+    }
+
+    // Save the merged PDF to the output path
+    await merger.save(outputPath);
+
+    // Attach the new PDF path to the request object for the next middleware
+    req.combinedPdfPath = outputPath;
+
+    // Proceed to the next middleware
+    next();
+
+  } catch (error) {
+    console.error('PDF generation error:', error);
+    res.status(500).json({
+      message: "Error occurred while generating PDF",
+      success: false
+    });
+  }
+};

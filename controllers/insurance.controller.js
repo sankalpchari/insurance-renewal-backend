@@ -2,9 +2,10 @@ import InsuranceDetails from "../models/insuranceDetails.model.js";
 import InsuranceProvider from "../models/InsuranceProvider.model.js";
 import DoctorDetails from "../models/doctors.model.js";
 import InsuranceReceipient from "../models/InsuranceReceipient.model.js";
-import sequelize,{ fn, col, where} from "sequelize";
+import sequelize,{ fn, col, where, json} from "sequelize";
 import { raw } from "mysql2";
 import { generatePDF } from "../services/pdfService.js";
+import EmailStatus from "../models/emailStatus.model.js";
 
 export const getInsuranceDetails = async (req, res) => {
     try {
@@ -12,6 +13,8 @@ export const getInsuranceDetails = async (req, res) => {
             searchTerm,
             fromDate,
             toDate,
+            is_active,
+            is_email_sent,
             sortBy = 'date',  // default sort by 'date'
             sortOrder = 'asc', // default sort order 'asc'
             recordsPerPage = 10, // default records per page
@@ -51,6 +54,21 @@ export const getInsuranceDetails = async (req, res) => {
                 [sequelize.Op.lte]: toDate
             };
         }
+
+
+        if(is_active){
+            whereData.where.is_active = {
+                [sequelize.Op.eq]: is_active
+            };
+        }
+
+        if(is_email_sent){
+            whereData.where.is_email_sent = {
+                [sequelize.Op.eq]: is_email_sent
+            };
+        }
+
+
 
         // Sorting logic
         let order = [];
@@ -113,12 +131,14 @@ export const getInsuranceDetails = async (req, res) => {
                 recordsPerPage: limit,
                 currentPage: parseInt(page)
             },
-            message: "Data fetched successfully"
+            message: "Data fetched successfully",
+            success:true
         });
     } catch (e) {
         console.log(e);
         return res.status(500).json({
             message: "Failed to get insurance details",
+            success:false
         });
     }
 };
@@ -163,10 +183,6 @@ export const createInsuranceDetails = async (req, res) => {
             }
         });
 
-
-
-
-
         // If an existing entry is found, update it
         if (existingDetails) {
             // Update the old entry to set is_current_active to 0
@@ -199,11 +215,16 @@ export const createInsuranceDetails = async (req, res) => {
             is_active: true
         });
 
-        return res.status(201).json({data:newInsuranceDetail, success:true, "message":"New insurance created successfully"});
+        return res.status(201).json({
+            data:newInsuranceDetail, 
+            success:true, 
+            "message":"New insurance created successfully"
+        });
     } catch (e) {
         console.log(e);
         return res.status(500).json({
             message: "Failed to create insurance details",
+            success:false
         });
     }
 };
@@ -286,11 +307,16 @@ export const updateInsuranceDetails = async (req, res) => {
             where: { ID: id }
         });
 
-        return res.status(200).json({data:newInsuranceDetail,"success":true,"message":"Insurance details updated successfully"});
+        return res.status(200).json({
+            data:newInsuranceDetail,
+            "success":true,
+            "message":"Insurance details updated successfully"
+        });
     } catch (e) {
         console.log(e);
         return res.status(500).json({
             message: "Failed to create insurance details",
+            success:false
         });
     }
 };
@@ -335,17 +361,19 @@ export const generatePdf = async(req, res)=>{
                     }
                 );
             }
-            return res.status(200).json({"test":"test"});
+            return res.status(200).json({"message":"PDF generated successfully", success:true});
 
         }else{
             return res.status(404).json({
                 message: "Insurance details not found",
+                success:false
             });  
         }
     }catch(e){
         console.log(e);
         return res.status(500).json({
             message: "Failed to generate pdf",
+            success:false
         });  
     }
 }
@@ -415,6 +443,7 @@ export const downloadPDF =  async(req, res)=>{
     }catch(error){
         return res.status(500).json({
             message: "Failed to download pdf",
+            success:false
         });  
     }
 }
@@ -522,13 +551,13 @@ export const insuranceProvider = async (req, res) => {
         console.log(insuranceProvider,"insuranceProvider")
 
         if (insuranceProvider.length > 0) {
-            return res.status(200).json({ message: 'Insurance Provider fetched successfully', data: insuranceProvider });
+            return res.status(200).json({ message: 'Insurance Provider fetched successfully', data: insuranceProvider, success:true });
         } else {
-            return res.status(204).json({ message: 'No insurance providers found', data: [] });
+            return res.status(204).json({ message: 'No insurance providers found', data: [], success:false });
         }
 
     } catch (error) {
-        res.status(500).json({ message: 'Error fetching provider', error: error.message });
+        res.status(500).json({ message: 'Error fetching provider', error: error.message , success:false});
     }
 };
 
@@ -541,12 +570,12 @@ export const deleteInsurance = async (req, res) => {
         });
 
         if (result === 0) {
-            return res.status(404).json({ message: 'Provider not found' });
+            return res.status(404).json({ message: 'Provider not found', success:false });
         }
 
-        res.status(200).json({ message: 'Provider deleted successfully' });
+        res.status(200).json({ message: 'Provider deleted successfully' , success:true });
     } catch (error) {
-        res.status(500).json({ message: 'Error deleting provider', error: error.message });
+        res.status(500).json({ message: 'Error deleting provider', error: error.message, success:false });
     }
 };
 
@@ -596,14 +625,14 @@ export const singleInsuranceDetails = async(req, res)=>{
         });
 
         if(Object.keys(insuranceProvider).length){
-           return res.status(200).json({ message: 'Insurance Details added successfully', data: insuranceProvider });
+           return res.status(200).json({ message: 'Insurance Details added successfully', data: insuranceProvider, success:true });
         }else{
-            return res.status(204).json({ message: 'Insurance Details added successfully', data: [] });
+            return res.status(204).json({ message: 'Insurance Details added successfully', data: [], success:false });
         }
 
     }catch(error){
         console.log(error);
-        res.status(500).json({ message: 'Error fetching provider', error: error.message });
+        res.status(500).json({ message: 'Error fetching provider', error: error.message , success:false});
     }
 }
 
@@ -611,17 +640,17 @@ export const renewInsurance = async(req, res)=>{
     try{
 
         const {type, id} = req.params;
-
+        const insurance = await InsuranceDetails.findOne({
+            where:{
+                ID:id
+            },
+            raw:true
+        })   
+        
 
         switch(type){
             case "simple":
-                    const insurance = await InsuranceDetails.findOne({
-                        where:{
-                            ID:id
-                        },
-                        raw:true
-                    })   
-                    
+                 
                     if(insurance){
                         const { from_service_date, plan_of_care, to_service_date } = req.body;
                         console.log(insurance,"insurance")
@@ -634,24 +663,73 @@ export const renewInsurance = async(req, res)=>{
 
                         const newInsurance = await InsuranceDetails.create({
                             ...insurance,
-                            from_service_date: insurance.from_service_date,
-                            plan_of_care: insurance.plan_of_care,
-                            to_service_date: insurance.to_service_date,
+                            from_service_date: from_service_date,
+                            plan_of_care: plan_of_care,
+                            to_service_date: to_service_date,
                             pdf_location:"",
                             is_active : 1
                         });
-
                         return res.status(200).json({ message: 'Insurance renewed successfully for the customer', success:true}); 
-
-
                     }else{
                         return res.status(404).json({ message: 'Cannot find the insurance', success:false});
                     }
-
-
                 break;
             case "complex":
-                    console.log("complex form");
+                    const {
+                        provider_id,
+                        recipient_id,
+                        doctor_id,
+                        prsrb_prov,
+                        pa,
+                        from_service_date,
+                        to_service_date,
+                        recipient_is,
+                        procedure_code,
+                        units,
+                        plan_of_care,
+                        number_of_days,
+                        max_per_day,
+                        max_per_day_unit,
+                        insurance_status,
+                        mmis_entry,
+                        rsn,
+                        comment_pa,
+                        procedure_val,
+                    } = req.body;
+
+                    await InsuranceDetails.update(
+                        { is_active: 0 },
+                        { where: { recipient_id: insurance.recipient_id } }
+                    );
+
+                    const newInsuranceDetail = await InsuranceDetails.create({
+                                provider_id,
+                                recipient_id,
+                                doctor_id,
+                                prsrb_prov,
+                                pa,
+                                from_service_date,
+                                to_service_date,
+                                recipient_is,
+                                procedure_code,
+                                units:procedure_val,
+                                plan_of_care,
+                                number_of_days,
+                                max_per_day,
+                                max_per_day_unit,
+                                insurance_status,
+                                mmis_entry,
+                                rsn,
+                                comment_pa,
+                                is_active: true
+                            });
+                        
+                    return res.status(201).json({
+                        data:newInsuranceDetail, 
+                        success:true, 
+                        "message":"Insurance renewed successfully"
+                    });
+
                 break;
             default:
                 return res.status(400).json({ message: 'Error fetching provider', success:false});
@@ -662,6 +740,44 @@ export const renewInsurance = async(req, res)=>{
         return res.status(500).json({ message: 'Error fetching provider', error: error.message, success:false });
     }
 }
+
+export const updateStatusInDB = async(req, res)=>{
+    try{
+
+        const { ids } = req.body;
+        const {user, combinedPdfPath, emailResp} = req;
+        const {userId } = user;
+
+        await InsuranceDetails.update(
+            { is_email_sent: 1 },
+            {
+                where: {
+                    ID: ids
+                }
+            }
+        );
+
+
+        const pathsplit = combinedPdfPath.split("assets");
+        const modifiedPath = "/assets" + pathsplit[1].replace(/\\/g, "/");
+
+        await EmailStatus.create({
+            combined_pdf_location: modifiedPath,	
+            renewal_count: ids.length,	
+            user_initiated:	userId,
+            email_status : "success",	
+            email_response:	JSON.stringify(emailResp)
+        })
+
+        return res.status(200).json({
+            message:"Email sent successfully",
+            success:true
+        })
+    } catch(error){
+         console.log(error);
+        return res.status(500).json({ message: 'Error occured while trying to save email related details',success:false });
+    }  
+} 
 
 
 
@@ -686,9 +802,9 @@ export const singleInsuranceProvider = async(req, res)=>{
         console.log(insuranceProvider);
 
         if(Object.keys(insuranceProvider).length){
-           return res.status(200).json({ message: 'Insurance Provider added successfully', data: insuranceProvider });
+           return res.status(200).json({ message: 'Insurance Provider added successfully', data: insuranceProvider, success:true });
         }else{
-            return res.status(204).json({ message: 'Insurance Provider added successfully', data: [] });
+            return res.status(204).json({ message: 'Insurance Provider added successfully', data: [], success:false});
         }
 
     }catch(error){
@@ -712,7 +828,7 @@ export const updateProvider = async (req, res) => {
         }
         // Validate ID
         if (!id) {
-            return res.status(400).json({ message: "Provider ID is required" });
+            return res.status(400).json({ message: "Provider ID is required", success:false });
         }
 
         if(is_default){
@@ -736,17 +852,20 @@ export const updateProvider = async (req, res) => {
             const updatedProvider = await InsuranceProvider.findOne({ where: { ID: id } });
             return res.status(200).json({
                 message: "Provider updated successfully",
-                data: updatedProvider
+                data: updatedProvider, 
+                success:true
+                
             });
         } else {
-            return res.status(404).json({ message: "No changes found in data" });
+            return res.status(404).json({ message: "No changes found in data", success:false });
         }
 
     } catch (error) {
         console.error("Error updating provider:", error.message);
         res.status(500).json({
             message: "Error updating provider",
-            error: error.message
+            error: error.message, 
+            success:false
         });
     }
 };
@@ -760,12 +879,12 @@ export const deleteProvider = async (req, res) => {
         });
 
         if (result === 0) {
-            return res.status(404).json({ message: 'Provider not found' });
+            return res.status(404).json({ message: 'Provider not found', success:false });
         }
 
-        res.status(200).json({ message: 'Provider deleted successfully' });
+        res.status(200).json({ message: 'Provider deleted successfully', success:true });
     } catch (error) {
-        res.status(500).json({ message: 'Error deleting provider', error: error.message });
+        res.status(500).json({ message: 'Error deleting provider', error: error.message, success:false });
     }
 };
 

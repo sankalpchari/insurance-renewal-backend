@@ -7,6 +7,7 @@ import "./models/initalizeModels.js";
 import path from "path"
 import { authRouter, doctorRoutes, insuranceRouter, InsuranceReceipientRouter, userRoutes, dashboardStats} from "./routes/routes.js"
 import { fileURLToPath } from 'url';
+import "./services/email.service.js";
 
 const app = express();
 const __filename = fileURLToPath(import.meta.url);

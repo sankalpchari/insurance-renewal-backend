@@ -296,4 +296,34 @@ export const insuranceFormSchema = Joi.object({
         'date.base': 'To date is required',
       }),
   });
+
+
+
+export const simpleRenewalSchema = Joi.object({
+  from_service_date: Joi.date()
+    .required()
+    .label('From Service Date')
+    .messages({
+      'date.base': '"From Service Date" must be a valid date',
+      'any.required': '"From Service Date" is required'
+    }),
+  
+  to_service_date: Joi.date()
+    .greater(Joi.ref('from_service_date'))
+    .required()
+    .label('To Service Date')
+    .messages({
+      'date.base': '"To Service Date" must be a valid date',
+      'date.greater': '"To Service Date" must be after "From Service Date"',
+      'any.required': '"To Service Date" is required'
+    }),
+
+  plan_of_care: Joi.string()
+    .required()
+    .label('Plan of Care')
+    .messages({
+      'string.base': '"Plan of Care" must be a string',
+      'any.required': '"Plan of Care" is required'
+    })
+});
   

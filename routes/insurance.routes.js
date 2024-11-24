@@ -12,12 +12,22 @@ import {
     singleInsuranceProvider,
     generatePdf, 
     renewInsurance,
-    downloadPDF
+    downloadPDF,
+    updateStatusInDB
 } from "../controllers/insurance.controller.js";
 
 import auth from "../middleware/auth.middleware.js";
-import {validateProvider , validateInsuranceDetails, checkAndCreateDoctor, checkAndCreateRecipient} from "../middleware/insuranceDetail.middleware.js";
+import {
+    validateProvider , 
+    validateInsuranceDetails, 
+    checkAndCreateDoctor, 
+    checkAndCreateRecipient,
+    validateRenewalData,
+    validatePDF,
+    sendRenewalEmail
+} from "../middleware/insuranceDetail.middleware.js";
 import { upload, handleUploadError } from "../config/multer.js";
+import {generateBulkPDF} from "../services/pdfService.js";
 
 const insuranceRouter  = express.Router();
 
@@ -27,8 +37,14 @@ insuranceRouter.post("/", auth, validateInsuranceDetails, checkAndCreateDoctor ,
 insuranceRouter.patch("/:id", auth, validateInsuranceDetails, checkAndCreateDoctor, checkAndCreateRecipient, updateInsuranceDetails);
 insuranceRouter.delete("/:id", auth, deleteInsurance);
 
-insuranceRouter.post("/renew/:type/:id", auth, renewInsurance);
+insuranceRouter.post("/renew/:type/:id", auth, validateRenewalData,  checkAndCreateDoctor, checkAndCreateRecipient, renewInsurance);
 
+insuranceRouter.post("/send-renewal-mail", auth, 
+    validatePDF, 
+    generateBulkPDF, 
+    sendRenewalEmail,
+    updateStatusInDB
+);
 
 // PDF routes 
 insuranceRouter.get("/generate-pdf/:id", auth, generatePdf);

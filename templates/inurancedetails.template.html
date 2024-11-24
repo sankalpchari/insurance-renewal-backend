@@ -103,6 +103,7 @@
       display: flex;
       align-items: center;
       gap: 6px;
+      width: 100%;
     }
 
     .two-column {
@@ -117,9 +118,16 @@
       align-items: center;
     }
 
-    .comments-section {
-      /* width: 100%; */
+    .comments-section .form-row {
+      align-items: flex-start;
+    }
 
+    .comments-section .form-input {
+      min-height: 80px;
+      max-height: 200px;
+      overflow-y: auto;
+      line-height: 1.4;
+      padding: 8px;
     }
 
     .form-checkbox {
@@ -170,22 +178,28 @@
       font-size: 0.9em;
     }
 
+    /* Updated units grid styling to match form style */
     .units-grid {
-      display: grid;
-      grid-template-columns: repeat(3, 1fr);
+      display: flex;
       gap: 8px;
-      background-color: var(--qoc-light-orange);
-      padding: 6px;
-      border-radius: 4px;
+      width: 100%;
     }
 
     .unit-item {
       display: flex;
+      flex: 1;
       align-items: center;
       gap: 6px;
-      background-color: var(--qoc-white);
-      padding: 4px;
-      border-radius: 3px;
+    }
+
+    .unit-item .form-label {
+      white-space: nowrap;
+      margin-right: 0;
+    }
+
+    .unit-item .form-input {
+      flex: 1;
+      min-width: 0;
     }
 
     .status-section {
@@ -221,26 +235,7 @@
         margin: 0;
         padding: 0.25in;
       }
-    }
 
-
-
-    /* Add specific styles for comments section */
-    .comments-section .form-row {
-      align-items: flex-start;
-    }
-
-    .comments-section .form-input {
-      min-height: 80px;
-      max-height: 200px;
-      overflow-y: auto;
-      line-height: 1.4;
-      padding: 8px;
-    }
-
-    /* Rest of the styles remain the same */
-
-    @media print {
       .comments-section .form-input {
         overflow-y: visible;
         max-height: none;
@@ -251,28 +246,38 @@
 </head>
 
 <body>
-  <!-- Rest of the HTML remains the same as in the previous version -->
   <div class="container">
     <div class="header">
       <img src="{{logo}}" alt="Quality One Care Home Health Inc." class="logo">
       <h4>PDN PREAUTHORIZATION INTAKE SHEET</h4>
     </div>
 
+    <!-- Sender Section -->
     <div class="form-section">
       <div class="form-row">
         <div class="form-row-inline">
           <div class="form-label">SENDER:</div>
           <div class="form-input">{{sender_name}}</div>
         </div>
-        <div class="form-row-inline">
+      </div>
+    </div>
+
+    <!-- Date and Time Section -->
+    <div class="form-section">
+      <div class="two-column">
+        <div>
           <div class="form-label">DATE:</div>
           <div class="form-input">{{date}}</div>
         </div>
-        <div class="form-row-inline">
+        <div>
           <div class="form-label">TIME:</div>
           <div class="form-input">{{time}}</div>
         </div>
       </div>
+    </div>
+
+    <!-- Phone Section -->
+    <div class="form-section">
       <div class="form-row">
         <div class="form-row-inline">
           <div class="form-label">PHONE:</div>
@@ -281,6 +286,7 @@
       </div>
     </div>
 
+    <!-- Provider Section -->
     <div class="form-section">
       <div class="two-column">
         <div>
@@ -292,6 +298,7 @@
           <div class="form-input">{{provider_number}}</div>
         </div>
       </div>
+      <br>
       <div class="two-column">
         <div>
           <div class="form-label">DR NAME:</div>
@@ -304,6 +311,7 @@
       </div>
     </div>
 
+    <!-- PA Section -->
     <div class="form-section">
       <div class="form-label">PA:</div>
       <div class="checkbox-group">
@@ -322,6 +330,7 @@
       </div>
     </div>
 
+    <!-- Dates of Service Section -->
     <div class="form-section">
       <div class="form-row">
         <div class="form-label">DATES OF SERVICE:</div>
@@ -330,6 +339,7 @@
       </div>
     </div>
 
+    <!-- Recipient Section -->
     <div class="form-section">
       <div class="form-label">RECIPIENT IS:</div>
       <div class="checkbox-group">
@@ -348,6 +358,7 @@
       </div>
     </div>
 
+    <!-- Procedure Codes Section -->
     <div class="form-section">
       <div class="form-label">PROCEDURE CODE:</div>
       <div class="procedure-codes">
@@ -383,6 +394,7 @@
       </div>
     </div>
 
+    <!-- Plan of Care Section -->
     <div class="form-section">
       <div class="form-row">
         <div class="form-label">PLAN OF CARE:</div>
@@ -390,6 +402,7 @@
       </div>
     </div>
 
+    <!-- Units Grid Section -->
     <div class="form-section">
       <div class="units-grid">
         <div class="unit-item">
@@ -407,14 +420,17 @@
       </div>
     </div>
 
+    <!-- Comments Section -->
     <div class="form-section comments-section">
       <div class="form-row">
         <div class="form-label">COMMENTS:</div>
         <div class="form-input" style="width: 100%; word-wrap: break-word; white-space: pre-wrap; line-height: 1.5;">
-          {{comments}}</div>
+          {{comments}}
+        </div>
       </div>
     </div>
 
+    <!-- Status Section -->
     <div class="form-section status-section">
       <div class="two-column">
         <div>
@@ -426,6 +442,7 @@
           <div class="form-input">{{mmis_entry_number}}</div>
         </div>
       </div>
+      <br />
       <div class="two-column">
         <div>
           <div class="form-label">RSN:</div>
