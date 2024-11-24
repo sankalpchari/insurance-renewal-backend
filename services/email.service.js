@@ -24,7 +24,7 @@ export const sendMailgunEmail = async (emailOptions) => {
     });
 
     return await transporter.sendMail({
-     from :"sankalpchari@gmail.com",
+     from :process.env.FROM_EMAIL,
       ... emailOptions
     });
 
