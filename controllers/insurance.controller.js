@@ -763,7 +763,8 @@ export const updateStatusInDB = async(req, res)=>{
 
         await EmailStatus.create({
             combined_pdf_location: modifiedPath,	
-            renewal_count: ids.length,	
+            renewal_count: ids.length,
+            insurance_ids : JSON.stringify(ids),	
             user_initiated:	userId,
             email_status : "success",	
             email_response:	JSON.stringify(emailResp)

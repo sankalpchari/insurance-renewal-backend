@@ -16,6 +16,11 @@ const EmailStatus = sequelize.define('EmailStatus', {
         allowNull: false,
         defaultValue: 0
     },
+    insurance_ids: {
+        type: DataTypes.TEXT,
+        allowNull: true,
+        defaultValue: null
+    },
     user_initiated: {
         type: DataTypes.INTEGER,
         allowNull: false,

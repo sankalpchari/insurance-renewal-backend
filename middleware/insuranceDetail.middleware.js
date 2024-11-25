@@ -7,6 +7,7 @@ import {
 import DoctorDetails from "../models/doctors.model.js";
 import InsuranceReceipient from "../models/InsuranceReceipient.model.js";
 import InsuranceDetails from "../models/insuranceDetails.model.js";
+import InsuranceProvider from "../models/InsuranceProvider.model.js";
 import {sendMailgunEmail} from "../services/email.service.js"
 import { where } from "sequelize";
 import fs from 'fs';
@@ -189,41 +190,54 @@ export const validatePDF = async (req, res, next) => {
 
 export const sendRenewalEmail = async(req, res, next)=>{
     try {
+
         const { combinedPdfPath, emailRecipient } = req; // `combinedPdfPath` and `emailRecipient` should be set in previous middleware
-        console.log(combinedPdfPath)
+        
+        const insuranceProvider = await InsuranceProvider.findOne({
+            where:{
+                is_default : 1
+            },
+            raw:true
+        });
+
+        if(insuranceProvider && insuranceProvider?.provider_email){
         // Check if combined PDF path exists
         if (!combinedPdfPath || !fs.existsSync(combinedPdfPath)) {
-          return res.status(400).json({
-            message: "Combined PDF file not found",
-            success: false
-          });
+            return res.status(400).json({
+              message: "Combined PDF file not found",
+              success: false
+            });
+          }
+      
+          // Define email options
+          const emailOptions = {
+            to: insuranceProvider.provider_email,
+            subject: "Your Combined PDF Document",
+            text: "Please find attached the combined PDF document.",
+            html: "<p>Please find attached the combined PDF document.</p>",
+            attachments: [
+              {
+                filename: path.basename(combinedPdfPath),
+                path: combinedPdfPath
+              }
+            ]
+          };
+      
+          // Send the email
+          const response = await sendMailgunEmail(emailOptions);
+          
+          req.emailResp = response;
+  
+          next();
+        }else{
+           return res.status(400).json({
+                message: "Insurance Provider not set, please make changes to the provider and try again",
+                success: false
+              });  
         }
-    
-        // Define email options
-        const emailOptions = {
-            
-          to: "sankalpchari@gmail.com", // recipient's email, should be set in `req.emailRecipient`
-          subject: "Your Combined PDF Document",
-          text: "Please find attached the combined PDF document.",
-          html: "<p>Please find attached the combined PDF document.</p>",
-          attachments: [
-            {
-              filename: path.basename(combinedPdfPath), // Get the filename from the path
-              path: combinedPdfPath                     // Path to the PDF file
-            }
-          ]
-        };
-    
-        // Send the email
-        const response = await sendMailgunEmail(emailOptions);
-        
-        req.emailResp = response;
-
-        next();
-    
       } catch (error) {
         console.error("Failed to send email with PDF:", error.message);
-        res.status(500).json({
+       return res.status(500).json({
           message: "Failed to send email",
           success: false
         });
