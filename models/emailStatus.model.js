@@ -2,7 +2,7 @@ import { DataTypes } from 'sequelize';
 import sequelize from "../config/db.js";
 
 const EmailStatus = sequelize.define('EmailStatus', {
-    id: {
+    ID: {
         type: DataTypes.INTEGER,
         primaryKey: true,
         autoIncrement: true

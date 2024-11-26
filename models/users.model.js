@@ -3,6 +3,7 @@ import sequelize from "../config/db.js";
 import bcrypt from 'bcrypt';
 import jwt from 'jsonwebtoken'; 
 import Roles from './roles.model.js';
+import EmailStatus from './emailStatus.model.js';
 
 // Define the User model
 const User = sequelize.define("User", {
@@ -101,5 +102,17 @@ User.belongsTo(Roles, {
   foreignKey: 'role_id',
   targetKey: 'ID',
 });
+
+User.hasMany(EmailStatus, {
+    foreignKey: 'user_initiated',
+    sourceKey: 'ID'
+});
+
+EmailStatus.belongsTo(User, {
+    foreignKey: 'user_initiated',
+    targetKey: 'ID',
+});
+
+
 
 export default User;

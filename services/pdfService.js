@@ -145,3 +145,25 @@ export const generateBulkPDF = async (req, res, next) => {
     });
   }
 };
+
+export const deleteFile = async (filePath) => {
+  try {
+
+    const rootPath = process.cwd();
+    // Resolve the absolute path of the file
+    const absolutePath = path.resolve(rootPath, filePath);
+
+    // Check if the file exists before attempting to delete it
+    if (fs.existsSync(absolutePath)) {
+      // Delete the file
+      fs.unlink(absolutePath, (err) => {
+        if (err) throw err;
+        console.log(`File deleted successfully: ${absolutePath}`);
+      });
+    } else {
+      console.log('File not found, nothing to delete.');
+    }
+  } catch (error) {
+    console.error('Error deleting file:', error);
+  }
+};

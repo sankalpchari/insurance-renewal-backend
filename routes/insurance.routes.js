@@ -13,7 +13,9 @@ import {
     generatePdf, 
     renewInsurance,
     downloadPDF,
-    updateStatusInDB
+    updateStatusInDB,
+    getRenewalData,
+    getRenewedInsuranceDetails
 } from "../controllers/insurance.controller.js";
 
 import auth from "../middleware/auth.middleware.js";
@@ -38,13 +40,12 @@ insuranceRouter.patch("/:id", auth, validateInsuranceDetails, checkAndCreateDoct
 insuranceRouter.delete("/:id", auth, deleteInsurance);
 
 insuranceRouter.post("/renew/:type/:id", auth, validateRenewalData,  checkAndCreateDoctor, checkAndCreateRecipient, renewInsurance);
+insuranceRouter.post("/send-renewal-mail", auth,  validatePDF,  generateBulkPDF,  sendRenewalEmail, updateStatusInDB);
 
-insuranceRouter.post("/send-renewal-mail", auth, 
-    validatePDF, 
-    generateBulkPDF, 
-    sendRenewalEmail,
-    updateStatusInDB
-);
+//Renewal stats
+insuranceRouter.get("/renewal-data", auth, getRenewalData);
+
+insuranceRouter.get("/renewal-data/all/:id", auth, getRenewedInsuranceDetails);
 
 // PDF routes 
 insuranceRouter.get("/generate-pdf/:id", auth, generatePdf);

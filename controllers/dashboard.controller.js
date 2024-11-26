@@ -3,11 +3,15 @@ import InsuranceReceipient from "../models/InsuranceReceipient.model.js";
 import InsuranceDetails from "../models/insuranceDetails.model.js";
 import DoctorDetails from "../models/doctors.model.js";
 import EmailStatus from "../models/emailStatus.model.js";
-import { Sequelize } from "sequelize";
+import { Sequelize , Op} from "sequelize";
 import { raw } from "mysql2";
 
 export const getDashboardStats = async (req, res) => {
     try {
+
+        const currentDate = new Date();
+        const fiveMonthsAgo = new Date(currentDate.getFullYear(), currentDate.getMonth() - 5, 1);
+
         // Count the total entries in both tables
         const receipientCount = await InsuranceReceipient.count();
         const providerCount = await InsuranceProvider.count();
@@ -19,6 +23,11 @@ export const getDashboardStats = async (req, res) => {
                 [Sequelize.fn('MONTH', Sequelize.col('created_at')), 'month'],
                 [Sequelize.fn('COUNT', Sequelize.col('id')), 'total_renewals']
             ],
+            where: {
+                created_at: {
+                    [Op.gte]: fiveMonthsAgo
+                }
+            },
             group: [
                 Sequelize.fn('YEAR', Sequelize.col('created_at')),
                 Sequelize.fn('MONTH', Sequelize.col('created_at'))
@@ -27,7 +36,7 @@ export const getDashboardStats = async (req, res) => {
                 [Sequelize.fn('YEAR', Sequelize.col('created_at')), 'ASC'],
                 [Sequelize.fn('MONTH', Sequelize.col('created_at')), 'ASC']
             ],
-            raw:true
+            raw: true
         });
 
         console.log(monthlyRenewalCounts);

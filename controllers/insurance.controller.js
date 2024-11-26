@@ -2,10 +2,15 @@ import InsuranceDetails from "../models/insuranceDetails.model.js";
 import InsuranceProvider from "../models/InsuranceProvider.model.js";
 import DoctorDetails from "../models/doctors.model.js";
 import InsuranceReceipient from "../models/InsuranceReceipient.model.js";
-import sequelize,{ fn, col, where, json} from "sequelize";
+import User from "../models/users.model.js" 
+import sequelize,{ fn, col, where, json , Op} from "sequelize";
 import { raw } from "mysql2";
-import { generatePDF } from "../services/pdfService.js";
+import { generatePDF , deleteFile} from "../services/pdfService.js";
 import EmailStatus from "../models/emailStatus.model.js";
+import fs from "fs"
+
+const rootPath = process.cwd();
+
 
 export const getInsuranceDetails = async (req, res) => {
     try {
@@ -346,12 +351,17 @@ export const generatePdf = async(req, res)=>{
         insuranceDetails = await insuranceDetails.toJSON(); 
 
         if(insuranceDetails){
-            console.log(insuranceDetails);
+            console.log(insuranceDetails.pdf_location);
             const dateNow = Date.now();
             const pdfName = `${insuranceDetails.InsuranceReceipient.name}-${insuranceDetails.InsuranceReceipient.receipient_ma}-${dateNow}.pdf`
             const pdf =  await generatePDF(pdfName,insuranceDetails);
 
             if(pdf){
+
+                if(insuranceDetails.pdf_location.length){
+                    await deleteFile(insuranceDetails.pdf_location);
+                }
+                
                 await InsuranceDetails.update(
                     { pdf_location: pdf },
                     {
@@ -447,6 +457,173 @@ export const downloadPDF =  async(req, res)=>{
         });  
     }
 }
+
+
+export const getRenewalData = async (req, res) => {
+    try {
+      const {
+        fromDate,
+        toDate,
+        sortBy = "created_at",
+        sortOrder = "DESC",
+        page = 1,
+        limit = 10,
+      } = req.query;
+  
+      // Date filtering
+      const dateFilter = {};
+      if (fromDate) dateFilter[Op.gte] = new Date(fromDate);
+      if (toDate) dateFilter[Op.lte] = new Date(toDate);
+  
+      // Pagination setup
+      const offset = (page - 1) * limit;
+  
+      // Fetch data with filters, sorting, pagination, and user join
+      const insuranceRenewalData = await EmailStatus.findAll({
+        where: {
+          ...(fromDate || toDate ? { created_at: dateFilter } : {}),
+        },
+        include: [
+          {
+            model: User,
+            as: 'User',  
+            required: true 
+          },
+        ],
+        attributes: {
+            include: [
+                [sequelize.literal("CONCAT(User.f_name, ' ', User.l_name)"), 'name']
+            ]
+        },
+        order: [[sortBy, sortOrder.toUpperCase()]], // Sorting
+        limit: parseInt(limit), // Number of records per page
+        offset: parseInt(offset), // Offset for pagination
+        raw: true,
+      });
+  
+      // Count total records for pagination
+      const totalRecords = await EmailStatus.count({
+        where: {
+          ...(fromDate || toDate ? { created_at: dateFilter } : {}),
+        },
+      });
+  
+      // Total pages calculation
+      const totalPages = Math.ceil(totalRecords / limit);
+  
+      return res.status(200).json({
+        success: true,
+        data: insuranceRenewalData,
+        pagination: {
+          totalRecords,
+          totalPages,
+          currentPage: parseInt(page),
+          recordsPerPage: parseInt(limit),
+        },
+      });
+    } catch (e) {
+      console.log(e);
+      return res.status(500).json({
+        message: "Failed to fetch data",
+        success: false,
+      });
+    }
+  };
+
+
+  export const getRenewedInsuranceDetails = async(req, res)=>{
+    try{
+
+        const { id } = req.params;
+
+        if(id){
+            const insuranceRenewalData = await EmailStatus.findOne({
+                where:{
+                    ID:id
+                }
+            })
+
+            if(insuranceRenewalData){
+
+                const ids = JSON.parse(insuranceRenewalData.insurance_ids);
+
+                if(insuranceRenewalData?.insurance_ids){
+                    const ids = JSON.parse(insuranceRenewalData.insurance_ids);
+                    const { rows: insuranceDetails, count: totalRecords } = await InsuranceDetails.findAndCountAll({
+                        include: [
+                          {
+                            model: InsuranceProvider,
+                            as: 'InsuranceProvider',
+                            attributes: ['provider_name'],
+                            required: true,
+                          },
+                          {
+                            model: DoctorDetails,
+                            as: 'DoctorDetail',
+                            attributes: ['doctor_name', 'doctor_phone_no'],
+                            required: true,
+                          },
+                          {
+                            model: InsuranceReceipient,
+                            as: 'InsuranceReceipient',
+                            required: true,
+                          },
+                        ],
+                        attributes: {
+                          include: [
+                            [sequelize.col('InsuranceProvider.provider_name'), 'provider_name'],
+                            [sequelize.col('InsuranceReceipient.name'), 'recipient_name'],
+                            [sequelize.col('InsuranceReceipient.receipient_ma'), 'recipient_ma'],
+                            [sequelize.fn('DATE_FORMAT', sequelize.col('from_service_date'), '%Y-%m-%d'), 'from_service_date'],
+                            [sequelize.fn('DATE_FORMAT', sequelize.col('to_service_date'), '%Y-%m-%d'), 'to_service_date'],
+                          ],
+                        },
+                        where: {
+                          // Assuming `idList` is an array of IDs you want to filter by
+                          id: {
+                            [Op.in]: ids, // Use Op.in for the IN clause
+                          },
+                        },
+                        raw: true,
+                      });
+
+                      console.log(insuranceDetails);
+                      
+                      return res.status(200).json({
+                        message: "",
+                        success: true,
+                        data:insuranceDetails
+                      });
+
+                }else{
+                    return res.status(404).json({
+                        message: "No insurance renewed on the selected day",
+                        success: false,
+                      });   
+                }
+            }else{
+                return res.status(404).json({
+                    message: "Failed to fetch data",
+                    success: false,
+                  });   
+            }
+        }else{
+            return res.status(404).json({
+                message: "Failed to fetch data",
+                success: false,
+              });   
+        }
+
+    }catch(e){
+        console.log(e);
+        return res.status(500).json({
+            message: "Failed to fetch data",
+            success: false,
+          }); 
+    }
+  }
+
+
 
 /******
  * 
@@ -565,6 +742,14 @@ export const deleteInsurance = async (req, res) => {
     try {
         const { id } = req.params;
 
+        const insurance = await InsuranceDetails.findOne({
+            where: { ID: id }
+        });
+
+        if(insurance?.pdf_location){
+            await deleteFile(insurance.pdf_location);
+        }
+
         const result = await InsuranceDetails.destroy({
             where: { ID: id }
         });
@@ -575,6 +760,7 @@ export const deleteInsurance = async (req, res) => {
 
         res.status(200).json({ message: 'Provider deleted successfully' , success:true });
     } catch (error) {
+        console.log(error)
         res.status(500).json({ message: 'Error deleting provider', error: error.message, success:false });
     }
 };
