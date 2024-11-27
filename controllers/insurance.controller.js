@@ -358,7 +358,7 @@ export const generatePdf = async(req, res)=>{
 
             if(pdf){
 
-                if(insuranceDetails.pdf_location.length){
+                if(insuranceDetails.pdf_location && insuranceDetails.pdf_location?.length){
                     await deleteFile(insuranceDetails.pdf_location);
                 }
                 
