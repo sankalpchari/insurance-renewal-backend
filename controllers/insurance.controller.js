@@ -934,6 +934,7 @@ export const updateStatusInDB = async(req, res)=>{
         const { ids } = req.body;
         const {user, combinedPdfPath, emailResp} = req;
         const {userId } = user;
+        console.log(user);
 
         await InsuranceDetails.update(
             { is_email_sent: 1 },
