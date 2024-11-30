@@ -411,8 +411,9 @@ export const downloadPDF =  async(req, res)=>{
         });
 
         insuranceDetails = await insuranceDetails.toJSON(); 
+        let URL = ""
         if(insuranceDetails){
-            let URL = ""
+         
             if(insuranceDetails?.pdf_location){
                 URL =  insuranceDetails?.pdf_location;
             }else{

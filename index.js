@@ -8,10 +8,20 @@ import path from "path"
 import { authRouter, doctorRoutes, insuranceRouter, InsuranceReceipientRouter, userRoutes, dashboardStats} from "./routes/routes.js"
 import { fileURLToPath } from 'url';
 import "./services/email.service.js";
+import rateLimit from 'express-rate-limit';
 
 const app = express();
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
+
+const limiter = rateLimit({
+    windowMs: 10 * 60 * 1000,
+    max: 100,
+    message: 'Too many requests from this IP, please try again after 15 minutes.',
+  });
+  
+  // Apply the rate limiter to all requests
+app.use(limiter);
 
 //================== app.use begins =============================
 
@@ -25,7 +35,7 @@ app.use('/assets', express.static(path.join(__dirname, 'assets')));
 //===================== app routes begins ========================
 
 
-app.get("/", (req, res) => {
+app.get(`/`, (req, res) => {
     res.send(" API is running ....");
 });
 

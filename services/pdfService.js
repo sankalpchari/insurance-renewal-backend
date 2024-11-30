@@ -84,7 +84,9 @@ export async function generatePDF(outputFile, data) {
     const html = compiledTemplate(settings);
 
     // Launch browser
-    const browser = await puppeteer.launch();
+    const browser = await puppeteer.launch({
+      args: ['--no-sandbox', '--disable-setuid-sandbox'],
+    });
     const page = await browser.newPage();
 
     // Set content and generate PDF
