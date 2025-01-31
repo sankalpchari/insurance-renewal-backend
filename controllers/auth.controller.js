@@ -31,6 +31,7 @@ const loginUser = async (req, res) => {
             userId: user.ID,
             email: user.email,
             role: user.role_id, // Or use user.role for the role name if you have it in the user model
+            name : user.f_name + " " + user.l_name,
             token,
         });
     } catch (error) {

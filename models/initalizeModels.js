@@ -39,7 +39,7 @@ const initializeRoles = async () => {
 
 export const syncDatabase = async () => {
     try {
-        await sequelize.sync({ alter: true });
+        await sequelize.sync({ alter: false });
     } catch (error) {
         console.error('Error synchronizing database:', error);
     }

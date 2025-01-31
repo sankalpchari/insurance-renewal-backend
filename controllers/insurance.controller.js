@@ -3,7 +3,7 @@ import InsuranceProvider from "../models/InsuranceProvider.model.js";
 import DoctorDetails from "../models/doctors.model.js";
 import InsuranceReceipient from "../models/InsuranceReceipient.model.js";
 import User from "../models/users.model.js" 
-import sequelize,{ fn, col, where, json , Op} from "sequelize";
+import sequelize,{ fn, col, where, json , Op, literal} from "sequelize";
 import { raw } from "mysql2";
 import { generatePDF , deleteFile} from "../services/pdfService.js";
 import EmailStatus from "../models/emailStatus.model.js";
@@ -24,13 +24,19 @@ export const getInsuranceDetails = async (req, res) => {
             sortOrder = 'asc', // default sort order 'asc'
             recordsPerPage = 10, // default records per page
             page = 1, // default to first page
-            is_default
+            is_default, 
+            is_draft,
+            searchType="",
+            recordsType = ""
         } = req.query;
 
         // Define where conditions based on filters
         let whereData = {
             where: {},
         };
+        let order = [];
+        let attributes = [];
+        const currentDate = new Date();
 
         // Filter by is_default if provided
         if (is_default) {
@@ -73,10 +79,30 @@ export const getInsuranceDetails = async (req, res) => {
             };
         }
 
+        if(is_draft){
+            whereData.where.is_draft = {
+                [sequelize.Op.eq]: is_draft
+            };
+        }
 
+
+        switch(searchType){
+            case "upcoming":
+                attributes.push([literal('DATEDIFF(to_service_date, NOW())'), 'daysUntilExpiry']);
+                whereData.where.to_service_date = {  [Op.gte]: currentDate, };
+                order.push([literal('DATEDIFF(to_service_date, NOW())'), 'ASC'])
+            break;
+            case "recent":
+                console.log("called");
+                attributes.push([literal('DATEDIFF(NOW(), from_service_date)'), 'daysSinceRenewal']);
+                order.push([literal('DATEDIFF(NOW(), from_service_date)'), 'ASC'])
+            break;
+            default:
+                // do nothing 
+        }
 
         // Sorting logic
-        let order = [];
+    
         if (sortBy === 'date') {
             order.push(['from_service_date', sortOrder]);
         } else if (sortBy === 'name') {
@@ -90,28 +116,15 @@ export const getInsuranceDetails = async (req, res) => {
         // Fetch insurance details with filters, sorting, and pagination
         const { rows: insuranceDetails, count: totalRecords } = await InsuranceDetails.findAndCountAll({
             include: [
-                {
-                    model: InsuranceProvider,
-                    as: 'InsuranceProvider',
-                    attributes: ['provider_name'],
-                    required: true
-                },
-                {
-                    model: DoctorDetails,
-                    as: 'DoctorDetail',
-                    attributes: ['doctor_name', "doctor_phone_no"],
-                    required: true,
-                },
-                {
-                    model: InsuranceReceipient,
-                    as: 'InsuranceReceipient',
-                    required: true,
-                }
+                {  model: InsuranceProvider,  as: 'InsuranceProvider',  attributes: ['provider_name'],  required: true },
+                {  model: DoctorDetails,  as: 'DoctorDetail',  attributes: ['doctor_name', "doctor_phone_no"],  required: true,},
+                { model: InsuranceReceipient, as: 'InsuranceReceipient', required: true,}
             ],
             attributes: {
                 include: [
+                    ...attributes,
                     [sequelize.col('InsuranceProvider.provider_name'), 'provider_name'],
-                    [sequelize.col('InsuranceReceipient.name'), 'recipient_name'],
+                    [sequelize.col('InsuranceReceipient.name'), 'receipient_name'],
                     [sequelize.col('InsuranceReceipient.receipient_ma'), 'recipient_ma'],
                     [sequelize.fn('DATE_FORMAT', sequelize.col('from_service_date'), '%Y-%m-%d'), 'from_service_date'],
                     [sequelize.fn('DATE_FORMAT', sequelize.col('to_service_date'), '%Y-%m-%d'), 'to_service_date']
@@ -257,8 +270,12 @@ export const updateInsuranceDetails = async (req, res) => {
             mmis_entry,
             rsn,
             comment_pa,
-            procedure_val
+            procedure_val,
+            recipient_ma
         } = req.body;
+
+        console.log(recipient_ma);
+        console.log(req.body)
 
 
         const {id} = req.params; 
@@ -266,7 +283,7 @@ export const updateInsuranceDetails = async (req, res) => {
         // Check for existing insurance details for this recipient with overlapping dates
         const existingDetails = await InsuranceDetails.findOne({
             where: {
-                recipient_ma,
+                recipient_id,
                 to_service_date: {
                     [sequelize.Op.gte]: from_service_date // to_service_date is greater than or equal to new from_service_date
                 },
@@ -329,8 +346,7 @@ export const updateInsuranceDetails = async (req, res) => {
 export const generatePdf = async(req, res)=>{
     try{
         const {id} = req.params;
-
-        let insuranceDetails = await InsuranceDetails.findOne({
+        var insuranceDetails = await InsuranceDetails.findOne({
             include: [
                 {  model: InsuranceProvider,  as: 'InsuranceProvider',  required: true },
                 { model: DoctorDetails, as: 'DoctorDetail', required: true},
@@ -340,24 +356,18 @@ export const generatePdf = async(req, res)=>{
                 include: [ 
                 [sequelize.fn('DATE_FORMAT',sequelize.col('from_service_date'), '%Y-%m-%d'), 'from_service_date'], 
                 [sequelize.fn('DATE_FORMAT', sequelize.col('to_service_date'), '%Y-%m-%d'), 'to_service_date']
-            ]
-            },
-            where:{
-                ID:id
-            }
+            ]},
+            where:{ ID:id }
         });
 
-
-        insuranceDetails = await insuranceDetails.toJSON(); 
+        insuranceDetails = await insuranceDetails?.toJSON(); 
 
         if(insuranceDetails){
             console.log(insuranceDetails.pdf_location);
             const dateNow = Date.now();
             const pdfName = `${insuranceDetails.InsuranceReceipient.name}-${insuranceDetails.InsuranceReceipient.receipient_ma}-${dateNow}.pdf`
-            const pdf =  await generatePDF(pdfName,insuranceDetails);
-
+             const pdf =  await generatePDF(pdfName,insuranceDetails);
             if(pdf){
-
                 if(insuranceDetails.pdf_location && insuranceDetails.pdf_location?.length){
                     await deleteFile(insuranceDetails.pdf_location);
                 }
@@ -370,8 +380,8 @@ export const generatePdf = async(req, res)=>{
                         },
                     }
                 );
-            }
-            return res.status(200).json({"message":"PDF generated successfully", success:true});
+            };
+            return res.status(200).json({"message":"PDF generated successfully", success:true, pdfLocation : pdf});
 
         }else{
             return res.status(404).json({
@@ -681,20 +691,28 @@ export const addInsuranceProvider = async(req, res, next)=>{
 
 export const insuranceProvider = async (req, res) => {
     try {
-        const { is_default } = req.query;
-
-        let whereData = {};
-
+        const { is_default, search, sortBy = 'date_created', sortOrder = 'DESC', page = 1, pageSize = 10 } = req.query;
+        
+        const whereData = {};
         if (is_default) {
-            whereData = {
-                where: {
-                    is_default: is_default ? 1 : 0
-                }
-            };
+            whereData.is_default = is_default === '1';
         }
 
-        console.log({
-            ...whereData,
+        if (search) {
+            whereData[Op.or] = [
+                { provider_name: { [Op.like]: `%${search}%` } },
+                { provider_code: { [Op.like]: `%${search}%` } },
+                { provider_email: { [Op.like]: `%${search}%` } },
+                { phone_no_1: { [Op.like]: `%${search}%` } },
+                { phone_no_2: { [Op.like]: `%${search}%` } }
+            ];
+        }
+
+        const offset = (Number(page) - 1) * Number(pageSize);
+        const limit = Number(pageSize);
+
+        const { count, rows } = await InsuranceProvider.findAndCountAll({
+            where: whereData,
             attributes: [
                 "ID",
                 "provider_name",
@@ -705,39 +723,50 @@ export const insuranceProvider = async (req, res) => {
                 "is_deleted",
                 "is_default",
                 "provider_email",
-                [fn('DATE', col('date_created')), 'date_created'], // Cast date_created to date only
-            ]
-        })
-
-
-        const insuranceProvider = await InsuranceProvider.findAll({
-            ...whereData,
-            attributes: [
-                "ID",
-                "provider_name",
-                "provider_code",
-                "phone_no_1",
-                "phone_no_2",
-                "logo_location",
-                "is_deleted",
-                "is_default",
-                "provider_email",
-                [fn('DATE', col('date_created')), 'date_created'], // Cast date_created to date only
-            ]
+                [fn('DATE', col('date_created')), 'date_created']
+            ],
+            order: [[sortBy, sortOrder]],
+            offset,
+            limit
         });
 
-        console.log(insuranceProvider,"insuranceProvider")
+        const totalPages = Math.ceil(count / limit);
+        const currentPage = Number(page);
 
-        if (insuranceProvider.length > 0) {
-            return res.status(200).json({ message: 'Insurance Provider fetched successfully', data: insuranceProvider, success:true });
+        if (rows.length > 0) {
+            return res.status(200).json({
+                message: 'Insurance Provider fetched successfully',
+                data: rows,
+                pagination: {
+                    currentPage,
+                    totalPages,
+                    totalItems: count,
+                    pageSize: limit
+                },
+                success: true
+            });
         } else {
-            return res.status(204).json({ message: 'No insurance providers found', data: [], success:false });
+            return res.status(204).json({
+                message: 'No insurance providers found',
+                data: [],
+                pagination: {
+                    currentPage,
+                    totalPages,
+                    totalItems: count,
+                    pageSize: limit
+                },
+                success: false
+            });
         }
-
     } catch (error) {
-        res.status(500).json({ message: 'Error fetching provider', error: error.message , success:false});
+        res.status(500).json({
+            message: 'Error fetching provider',
+            error: error.message,
+            success: false
+        });
     }
 };
+
 
 export const deleteInsurance = async (req, res) => {
     try {
@@ -747,19 +776,32 @@ export const deleteInsurance = async (req, res) => {
             where: { ID: id }
         });
 
-        if(insurance?.pdf_location){
-            await deleteFile(insurance.pdf_location);
+
+        if(insurance){
+
+            if(insurance.is_active){
+                return res.status(200).json({ message: 'Insurance not found ' , success:false }); 
+            }
+
+
+            if(insurance?.pdf_location){
+                await deleteFile(insurance.pdf_location);
+            }
+    
+            const result = await InsuranceDetails.destroy({
+                where: { ID: id }
+            });
+    
+            if (result === 0) {
+                return res.status(404).json({ message: 'Provider not found', success:false });
+            }
+    
+            return res.status(200).json({ message: 'Provider deleted successfully' , success:true });
+        }else{
+            return res.status(404).json({ message: 'Insurance not found ' , success:false });
         }
 
-        const result = await InsuranceDetails.destroy({
-            where: { ID: id }
-        });
 
-        if (result === 0) {
-            return res.status(404).json({ message: 'Provider not found', success:false });
-        }
-
-        res.status(200).json({ message: 'Provider deleted successfully' , success:true });
     } catch (error) {
         console.log(error)
         res.status(500).json({ message: 'Error deleting provider', error: error.message, success:false });

@@ -78,17 +78,14 @@ export async function generatePDF(outputFile, data) {
     pa_number: data.comment_pa,
   }
 
-
-  console.log(settings);
   
-    const html = compiledTemplate(settings);
-
-    // Launch browser
+  const html = compiledTemplate(settings);
     const browser = await puppeteer.launch({
       args: ['--no-sandbox', '--disable-setuid-sandbox'],
     });
+    console.log("here 1");
     const page = await browser.newPage();
-
+    console.log("here 2");
     // Set content and generate PDF
     await page.setContent(html, { waitUntil: 'networkidle0' });
     await page.pdf({ 
@@ -99,6 +96,8 @@ export async function generatePDF(outputFile, data) {
     await browser.close();
     console.log(`PDF generated successfully at ${outputPath}`);
     return path.join("assets", "pdf", outputFile);
+
+
   } catch (error) {
     console.error('PDF generation error:', error);
     return false;

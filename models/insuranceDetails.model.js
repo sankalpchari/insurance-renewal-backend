@@ -101,6 +101,10 @@ const InsuranceDetails = sequelize.define("InsuranceDetails", {
         type:DataTypes.BOOLEAN,
         defaultValue: false, 
     },
+    is_draft:{
+        type:DataTypes.BOOLEAN,
+        defaultValue: 0, 
+    },
     pdf_location:{
         type:DataTypes.STRING,
         defaultValue: null, 
