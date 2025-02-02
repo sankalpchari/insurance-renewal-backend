@@ -7,6 +7,7 @@ import sequelize,{ fn, col, where, json , Op, literal} from "sequelize";
 import { raw } from "mysql2";
 import { generatePDF , deleteFile} from "../services/pdfService.js";
 import EmailStatus from "../models/emailStatus.model.js";
+import {getRecordType} from "../utils/helpers.js";
 import fs from "fs"
 
 const rootPath = process.cwd();
@@ -127,7 +128,11 @@ export const getInsuranceDetails = async (req, res) => {
                     [sequelize.col('InsuranceReceipient.name'), 'receipient_name'],
                     [sequelize.col('InsuranceReceipient.receipient_ma'), 'recipient_ma'],
                     [sequelize.fn('DATE_FORMAT', sequelize.col('from_service_date'), '%Y-%m-%d'), 'from_service_date'],
-                    [sequelize.fn('DATE_FORMAT', sequelize.col('to_service_date'), '%Y-%m-%d'), 'to_service_date']
+                    [sequelize.fn('DATE_FORMAT', sequelize.col('to_service_date'), '%Y-%m-%d'), 'to_service_date'],
+                    [
+                        sequelize.literal(`CASE WHEN record_type = 1 THEN 'Insurance' WHEN record_type = 2 THEN 'Template' ELSE 'Unknown' END`), 
+                        'record_type_label'
+                    ]
                 ]
             },
             where: whereData.where,
@@ -184,7 +189,8 @@ export const createInsuranceDetails = async (req, res) => {
             mmis_entry,
             rsn,
             comment_pa,
-            procedure_val,
+            procedure_units,
+            save_type
         } = req.body;
 
         // Check for existing insurance details for this recipient with overlapping dates
@@ -209,6 +215,14 @@ export const createInsuranceDetails = async (req, res) => {
                 { where: { ID: existingDetails.ID } }
             );
         }
+
+
+        let record_type = getRecordType(save_type);
+        let is_draft = 0;
+        if(save_type == "draft"){
+            is_draft = 1;
+        }
+
     
         // Create a new insurance detail entry
         const newInsuranceDetail = await InsuranceDetails.create({
@@ -221,7 +235,7 @@ export const createInsuranceDetails = async (req, res) => {
             to_service_date,
             recipient_is,
             procedure_code,
-            units:procedure_val,
+            units:procedure_units,
             plan_of_care,
             number_of_days,
             max_per_day,
@@ -230,7 +244,9 @@ export const createInsuranceDetails = async (req, res) => {
             mmis_entry,
             rsn,
             comment_pa,
-            is_active: true
+            is_active: true,
+            record_type,
+            is_draft
         });
 
         return res.status(201).json({
@@ -695,7 +711,7 @@ export const insuranceProvider = async (req, res) => {
         
         const whereData = {};
         if (is_default) {
-            whereData.is_default = is_default === '1';
+            whereData.is_default = Boolean(is_default) == true ? 1:0;
         }
 
         if (search) {
@@ -710,7 +726,7 @@ export const insuranceProvider = async (req, res) => {
 
         const offset = (Number(page) - 1) * Number(pageSize);
         const limit = Number(pageSize);
-
+        console.log(whereData);
         const { count, rows } = await InsuranceProvider.findAndCountAll({
             where: whereData,
             attributes: [
@@ -771,17 +787,14 @@ export const insuranceProvider = async (req, res) => {
 export const deleteInsurance = async (req, res) => {
     try {
         const { id } = req.params;
-
         const insurance = await InsuranceDetails.findOne({
             where: { ID: id }
         });
 
-
         if(insurance){
-
-            if(insurance.is_active){
-                return res.status(200).json({ message: 'Insurance not found ' , success:false }); 
-            }
+            // if(insurance.is_active){
+            //     return res.status(200).json({ message: 'Cannot delete a active authorization' , success:false }); 
+            // }
 
 
             if(insurance?.pdf_location){

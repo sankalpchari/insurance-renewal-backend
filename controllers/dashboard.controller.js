@@ -12,38 +12,46 @@ export const getDashboardStats = async (req, res) => {
         
         // Upcoming insurance renewals with joins
         const upcomingRenewals = await InsuranceDetails.findAll({
-            where: {
+          where: {
               is_active: 1,
-              to_service_date: {  [Op.gte]: currentDate, },
-            },
-            attributes: {
-              include: [  [literal('DATEDIFF(to_service_date, NOW())'), 'daysUntilExpiry'],],
-            },
-            include: [
-              { model: InsuranceProvider, as: 'InsuranceProvider', attributes: ['provider_name']},
-              { model: DoctorDetails, as: 'DoctorDetail', attributes: ['doctor_name']},
-              { model: InsuranceReceipient, as: 'InsuranceReceipient', attributes: ['ID','name','receipient_ma']},
-            ],
-            attributes: {
-                include: [
-                    [sequelize.col('InsuranceProvider.provider_name'), 'provider_name'],
-                    [sequelize.col('DoctorDetail.doctor_name'), 'doctor_name'],
-                    [sequelize.col('InsuranceReceipient.ID'), 'receipient_ID'],
-                    [sequelize.col('InsuranceReceipient.name'), 'receipient_name'],
-                    [sequelize.col('InsuranceReceipient.receipient_ma'), 'receipient_ma'],
-                    [sequelize.fn('DATE_FORMAT', sequelize.col('from_service_date'), '%Y-%m-%d'), 'from_service_date'],
-                    [sequelize.fn('DATE_FORMAT', sequelize.col('to_service_date'), '%Y-%m-%d'), 'to_service_date']
-                ]
-            },
-            order: [[literal('DATEDIFF(to_service_date, NOW())'), 'ASC']],
-            limit: 3,
-            raw: true,
-          });
+              is_draft: 0,
+              record_type: 1,
+              to_service_date: { [Op.gte]: currentDate }, // Future expiry date
+              [Op.and]: literal('DATEDIFF(to_service_date, NOW()) <= 10') // At most 10 days left
+          },
+          attributes: {
+              include: [
+                  [literal('DATEDIFF(to_service_date, NOW())'), 'daysUntilExpiry'],
+              ],
+          },
+          include: [
+              { model: InsuranceProvider, as: 'InsuranceProvider', attributes: ['provider_name'] },
+              { model: DoctorDetails, as: 'DoctorDetail', attributes: ['doctor_name'] },
+              { model: InsuranceReceipient, as: 'InsuranceReceipient', attributes: ['ID', 'name', 'receipient_ma'] },
+          ],
+          attributes: {
+              include: [
+                  [sequelize.col('InsuranceProvider.provider_name'), 'provider_name'],
+                  [sequelize.col('DoctorDetail.doctor_name'), 'doctor_name'],
+                  [sequelize.col('InsuranceReceipient.ID'), 'receipient_ID'],
+                  [sequelize.col('InsuranceReceipient.name'), 'receipient_name'],
+                  [sequelize.col('InsuranceReceipient.receipient_ma'), 'receipient_ma'],
+                  [sequelize.fn('DATE_FORMAT', sequelize.col('from_service_date'), '%Y-%m-%d'), 'from_service_date'],
+                  [sequelize.fn('DATE_FORMAT', sequelize.col('to_service_date'), '%Y-%m-%d'), 'to_service_date']
+              ]
+          },
+          order: [[literal('DATEDIFF(to_service_date, NOW())'), 'ASC']], // Sort by soonest expiry
+          limit: 3,
+          raw: true,
+      });
+      
 
         // Recent renewals with joins
         const recentRenewals = await InsuranceDetails.findAll({
             where: {
               is_active: 1,
+              is_draft:0,
+              record_type:1
             },
             attributes: {
               include: [

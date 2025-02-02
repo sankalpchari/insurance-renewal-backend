@@ -113,6 +113,11 @@ const InsuranceDetails = sequelize.define("InsuranceDetails", {
         type: DataTypes.DATE,
         allowNull: false,
         defaultValue: Sequelize.literal('CURRENT_TIMESTAMP'),
+    },
+    record_type:{
+        type: DataTypes.INTEGER, // Use INTEGER for units
+        allowNull: true,
+        default:1
     }
 }, {
     tableName: 'insurance_details',

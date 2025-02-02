@@ -38,12 +38,6 @@ export const insuranceDetailsSchema = Joi.object({
             'string.base': '"prsrb_prov" must be a string',
             'any.required': '"prsrb_prov" is required'
         }),
-    pa: Joi.string()
-        .required()
-        .messages({
-            'string.base': '"pa" must be a string',
-            'any.required': '"pa" is required'
-        }),
     from_service_date: Joi.date()
         .iso()
         .required()
@@ -230,37 +224,18 @@ export const insuranceFormSchema = Joi.object({
         'number.positive': 'Number of days must be positive',
         'number.integer': 'Number of days must be an integer',
       }),
-    pa: Joi.string().valid('NEW', 'RENEWAL', 'OTHERS').required().messages({
-      'any.only': 'PA status is required',
-    }),
     plan_of_care: Joi.string().required().messages({
       'string.empty': 'Plan of care is required',
     }),
     procedure_code: Joi.string()
-      .valid('TI003', 'TI002', 'TI004')
+      .valid('T1002', 'T1003', 'T1004')
       .required()
       .messages({
         'any.only': 'Procedure code is required',
       }),
-    procedure_val: Joi.number()
-      .optional()
-      .allow(null)
-      .when('procedure_code', {
-        is: 'TI003',
-        then: Joi.required().messages({
-          'any.required': 'Procedure units for TI003 are required',
-        }),
-      }),
-    provider_name: Joi.string().required().messages({
-      'string.empty': 'Provider name is required',
-    }),
-    provider_number: Joi.string()
-      .pattern(/^[0-9]+$/)
-      .required()
-      .messages({
-        'string.pattern.base': 'Provider number must be numeric',
-        'string.empty': 'Provider number is required',
-      }),
+    procedure_units: Joi.number().optional().allow(null),
+    provider_name: Joi.string().required().messages({'string.empty': 'Provider name is required',}),
+    provider_number: Joi.string().pattern(/^[0-9]+$/).required().messages({ 'string.pattern.base': 'Provider number must be numeric', 'string.empty': 'Provider number is required',}),
     prsrb_prov: Joi.string().required().messages({
       'string.empty': 'Prescription provider is required',
     }),
@@ -285,16 +260,17 @@ export const insuranceFormSchema = Joi.object({
     sender_date: Joi.date().required().messages({
       'date.base': 'Sender date is required',
     }),
-    time: Joi.string().required().messages({
-      'string.empty': 'Time is required',
-    }),
     to_service_date: Joi.date()
       .greater(Joi.ref('from_service_date'))
       .required()
-      .messages({
-        'date.greater': 'To date must be after From date',
-        'date.base': 'To date is required',
-      }),
+      .messages({ 'date.greater': 'To date must be after From date', 'date.base': 'To date is required',}),
+    save_type:Joi.string().optional().allow(null),
+    pa:Joi.string()
+    .valid('NEW', 'RENEWAL', 'OTHERS')
+    .required()
+    .messages({
+      'any.only': 'Please select PA',
+    }),
   });
 
 
