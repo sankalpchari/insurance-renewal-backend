@@ -29,6 +29,12 @@ const DoctorDetails = sequelize.define("DoctorDetails", {
   }, {
     tableName: 'doctor_details', // Specify the table name
     timestamps: false,   // Disable timestamps if not needed
+    indexes: [
+      {
+        unique: true,
+        fields: ["ID"],
+      }
+    ]
   });
 
 export default DoctorDetails;

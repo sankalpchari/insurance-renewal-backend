@@ -1,8 +1,6 @@
 import { DataTypes } from 'sequelize';
 import sequelize from "../config/db.js";
 
-
-// Define the User model
 const InsuranceReceipient = sequelize.define("InsuranceReceipient", {
     ID: {
         type: DataTypes.INTEGER,
@@ -18,6 +16,22 @@ const InsuranceReceipient = sequelize.define("InsuranceReceipient", {
         type: DataTypes.STRING,
         allowNull: false,
     },
+    doctor_id: {
+        type: DataTypes.INTEGER,
+        allowNull: false,
+    },
+    prsrb_prov: {
+        type: DataTypes.STRING,
+        allowNull: false,
+    },
+    recipient_type: {
+        type: DataTypes.ENUM('MW', 'REM', 'REM OPT'),
+        allowNull: false,
+    },
+    dob: {
+        type: DataTypes.DATEONLY,
+        allowNull: false,
+    },
     is_deleted: {
         type: DataTypes.BOOLEAN,
         allowNull: false,
@@ -31,7 +45,26 @@ const InsuranceReceipient = sequelize.define("InsuranceReceipient", {
 }, {
     tableName: 'insurance_receipient',
     timestamps: false,
+    indexes: [
+        {
+            unique: true,
+            fields: ["ID"],
+        },
+        {
+            fields: ["doctor_id"] // Added index for foreign key
+        },
+        {
+            fields: ["receipient_ma"], // Added index for frequently queried field
+        }
+    ]
 });
 
+// Define the association with Doctor model
+InsuranceReceipient.associate = (models) => {
+    InsuranceReceipient.belongsTo(models.DoctorDetails, {
+        foreignKey: 'doctor_id',
+        as: 'doctor'
+    });
+};
 
-export default InsuranceReceipient
+export default InsuranceReceipient;

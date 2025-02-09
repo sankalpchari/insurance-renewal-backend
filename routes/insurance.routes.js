@@ -30,6 +30,7 @@ import {
 } from "../middleware/insuranceDetail.middleware.js";
 import { upload, handleUploadError } from "../config/multer.js";
 import {generateBulkPDF} from "../services/pdfService.js";
+import { decryptData } from "../config/dataEncryption.js";
 
 const insuranceRouter  = express.Router();
 
@@ -63,7 +64,7 @@ insuranceRouter.post("/provider",
     addInsuranceProvider
 );
 
-insuranceRouter.patch("/provider/:id", auth, upload.single("logo"), handleUploadError, validateProvider,  updateProvider); 
+insuranceRouter.patch("/provider/:id", auth, upload.single("logo"), handleUploadError, decryptData, validateProvider,  updateProvider); 
 insuranceRouter.delete("/provider/:id", auth, deleteProvider); 
 
 export default insuranceRouter;

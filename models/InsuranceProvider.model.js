@@ -50,6 +50,12 @@ const InsuranceProvider = sequelize.define("InsuranceProvider", {
   }, {
     tableName: 'insurance_provider', // Specify the table name
     timestamps: false,   // Disable timestamps if not needed
+    indexes: [
+      {
+        unique: true,
+        fields: ["ID"],
+      }
+    ]
   });
 
 export default InsuranceProvider;

@@ -19,10 +19,6 @@ const InsuranceDetails = sequelize.define("InsuranceDetails", {
         type: DataTypes.INTEGER,
         allowNull: false,
     },
-    doctor_id: {
-        type: DataTypes.INTEGER,
-        allowNull: true,
-    },
     prsrb_prov: {
         type: DataTypes.STRING,
         allowNull: false,
@@ -122,6 +118,12 @@ const InsuranceDetails = sequelize.define("InsuranceDetails", {
 }, {
     tableName: 'insurance_details',
     timestamps: false,
+    indexes: [
+        {
+          unique: true,
+          fields: ["ID"],
+        }
+      ]
 });
 
 // Set up associations
@@ -132,17 +134,6 @@ InsuranceProvider.hasMany(InsuranceDetails, {
 
 InsuranceDetails.belongsTo(InsuranceProvider, {
     foreignKey: 'provider_id',
-    targetKey: 'ID'
-});
-
-// Link InsuranceDetails to DoctorDetails
-DoctorDetails.hasMany(InsuranceDetails, {
-    foreignKey: 'doctor_id',
-    sourceKey: 'ID'
-});
-
-InsuranceDetails.belongsTo(DoctorDetails, {
-    foreignKey: 'doctor_id',
     targetKey: 'ID'
 });
 

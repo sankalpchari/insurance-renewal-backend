@@ -45,7 +45,13 @@ const EmailStatus = sequelize.define('EmailStatus', {
     }
 }, {
     tableName: 'email_status', // Define the table name explicitly if necessary
-    timestamps: false // Disable Sequelize's automatic timestamp columns (createdAt, updatedAt)
+    timestamps: false, // Disable Sequelize's automatic timestamp columns (createdAt, updatedAt)
+    indexes: [
+        {
+          unique: true,
+          fields: ["ID"],
+        }
+      ]
 });
 
 export default EmailStatus;

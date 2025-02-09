@@ -9,6 +9,8 @@ import { authRouter, doctorRoutes, insuranceRouter, InsuranceReceipientRouter, u
 import { fileURLToPath } from 'url';
 import "./services/email.service.js";
 import rateLimit from 'express-rate-limit';
+import {encryptionMiddleware} from "./middleware/encrypt.middleware.js";
+import { decryptData } from "./config/dataEncryption.js";
 
 const app = express();
 const __filename = fileURLToPath(import.meta.url);
@@ -22,6 +24,13 @@ const limiter = rateLimit({
     max: 100,
     message: 'Too many requests from this IP, please try again after 15 minutes.',
   });
+
+app.use((req, res, next) => {
+    res.setHeader('X-Content-Type-Options', 'nosniff');
+    res.setHeader('X-Frame-Options', 'DENY');
+    res.setHeader('X-XSS-Protection', '1; mode=block');
+    next();
+});
   
   // Apply the rate limiter to all requests
 app.use(limiter);
@@ -30,6 +39,8 @@ app.use(limiter);
 
 app.use(express.json())
 app.use(express.urlencoded({ extended: true }));
+app.use(decryptData);
+app.use(encryptionMiddleware());
 app.use(cors());
 app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 app.use('/assets', express.static(path.join(__dirname, 'assets')));
@@ -41,7 +52,7 @@ app.use('/assets', express.static(path.join(__dirname, 'assets')));
 app.get(`/`, (req, res) => {
     res.send(" API is running ....");
 });
-
+// app.use(decryptData);
 app.use(`${process.env.URL_PREFIX}/auth`,authRouter);
 app.use(`${process.env.URL_PREFIX}/doctors`,doctorRoutes);
 app.use(`${process.env.URL_PREFIX}/insurance`,insuranceRouter);

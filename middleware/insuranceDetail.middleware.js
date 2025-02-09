@@ -14,6 +14,7 @@ import fs from 'fs';
 import path from 'path';
 
 export const validateProvider = (req, res, next) => {
+     console.log(req.body);
     const { error } = providerSchema.validate(req.body, { abortEarly: false });
     if (error) {
         const errorMessages = error.details.map(detail => detail.message);

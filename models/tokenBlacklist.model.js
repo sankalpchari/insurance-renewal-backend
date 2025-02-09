@@ -14,6 +14,12 @@ const TokenBlacklist = sequelize.define('TokenBlacklist', {
 }, {
     tableName: 'token_blacklist',
     timestamps: false,
+    indexes: [
+        {
+          unique: true,
+          fields: ["token"],
+        }
+      ]
 });
 
 export default TokenBlacklist;
