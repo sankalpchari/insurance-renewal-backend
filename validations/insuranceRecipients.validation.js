@@ -2,7 +2,7 @@ import Joi from 'joi';
 
 export const recipientValidation = Joi.object({
     name: Joi.string().trim().required(),
-    receipient_ma: Joi.string().trim().required(),
+    recipient_ma: Joi.string().trim().required(),
     doctor_name: Joi.string().trim().required(),
     doctor_number: Joi.string()
     .trim()

@@ -1,5 +1,6 @@
 import { DataTypes } from 'sequelize';
 import sequelize from "../config/db.js";
+import DoctorDetails from './doctors.model.js';
 
 const InsuranceReceipient = sequelize.define("InsuranceReceipient", {
     ID: {
@@ -12,7 +13,7 @@ const InsuranceReceipient = sequelize.define("InsuranceReceipient", {
         type: DataTypes.STRING,
         allowNull: false,
     },
-    receipient_ma: {
+    recipient_ma: {
         type: DataTypes.STRING,
         allowNull: false,
     },
@@ -54,7 +55,7 @@ const InsuranceReceipient = sequelize.define("InsuranceReceipient", {
             fields: ["doctor_id"] // Added index for foreign key
         },
         {
-            fields: ["receipient_ma"], // Added index for frequently queried field
+            fields: ["recipient_ma"], // Added index for frequently queried field
         }
     ]
 });
@@ -63,8 +64,16 @@ const InsuranceReceipient = sequelize.define("InsuranceReceipient", {
 InsuranceReceipient.associate = (models) => {
     InsuranceReceipient.belongsTo(models.DoctorDetails, {
         foreignKey: 'doctor_id',
-        as: 'doctor'
+        as: 'Doctor'
     });
 };
+
+DoctorDetails.associate = (models) => {
+    DoctorDetails.hasMany(models.InsuranceReceipient, { 
+        foreignKey: 'doctor_id',  // This must match the foreign key used in belongsTo
+        as: 'InsuranceReceipient'  // Alias should be different from the one in belongsTo
+    });
+};
+
 
 export default InsuranceReceipient;

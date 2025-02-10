@@ -271,6 +271,7 @@ export const insuranceFormSchema = Joi.object({
     .messages({
       'any.only': 'Please select PA',
     }),
+    dob: Joi.date().iso().required(),
   });
 
 

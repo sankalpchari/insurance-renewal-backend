@@ -138,6 +138,18 @@ InsuranceDetails.belongsTo(InsuranceProvider, {
 });
 
 // link insurance details to receipients 
+
+
+DoctorDetails.hasMany(InsuranceDetails, {
+    foreignKey: 'provider_id',
+    sourceKey: 'ID'
+});
+
+InsuranceDetails.belongsTo(InsuranceProvider, {
+    foreignKey: 'provider_id',
+    targetKey: 'ID'
+});
+
 // Link InsuranceDetails to DoctorDetails
 InsuranceReceipient.hasMany(InsuranceDetails, {
     foreignKey: 'recipient_id',

@@ -49,7 +49,7 @@ export async function generatePDF(outputFile, data) {
     provider_name: data.InsuranceProvider.provider_name,
     provider_number: data.InsuranceProvider.provider_code,
     recipient_name:data.InsuranceReceipient.name,
-    recipient_ma_number:data.InsuranceReceipient.receipient_ma,
+    recipient_ma_number:data.InsuranceReceipient.recipient_ma,
     doctor_name:data.DoctorDetail.doctor_name,
     doctor_phone_number:data.DoctorDetail.doctor_phone_no,
     prsrp_prov_number:data.prsrb_prov,

@@ -48,7 +48,7 @@ export const getInsuranceDetails = async (req, res) => {
         if (searchTerm) {
             whereData.where[sequelize.Op.or] = [
                 { '$InsuranceReceipient.name$': { [sequelize.Op.like]: `%${searchTerm}%` } },
-                { '$InsuranceReceipient.receipient_ma$': { [sequelize.Op.like]: `%${searchTerm}%` } }
+                { '$InsuranceReceipient.recipient_ma$': { [sequelize.Op.like]: `%${searchTerm}%` } }
             ];
         }
 
@@ -118,7 +118,6 @@ export const getInsuranceDetails = async (req, res) => {
         const { rows: insuranceDetails, count: totalRecords } = await InsuranceDetails.findAndCountAll({
             include: [
                 {  model: InsuranceProvider,  as: 'InsuranceProvider',  attributes: ['provider_name'],  required: true },
-                {  model: DoctorDetails,  as: 'DoctorDetail',  attributes: ['doctor_name', "doctor_phone_no"],  required: true,},
                 { model: InsuranceReceipient, as: 'InsuranceReceipient', required: true,}
             ],
             attributes: {
@@ -126,7 +125,7 @@ export const getInsuranceDetails = async (req, res) => {
                     ...attributes,
                     [sequelize.col('InsuranceProvider.provider_name'), 'provider_name'],
                     [sequelize.col('InsuranceReceipient.name'), 'receipient_name'],
-                    [sequelize.col('InsuranceReceipient.receipient_ma'), 'recipient_ma'],
+                    [sequelize.col('InsuranceReceipient.recipient_ma'), 'recipient_ma'],
                     [sequelize.fn('DATE_FORMAT', sequelize.col('from_service_date'), '%Y-%m-%d'), 'from_service_date'],
                     [sequelize.fn('DATE_FORMAT', sequelize.col('to_service_date'), '%Y-%m-%d'), 'to_service_date'],
                     [
@@ -173,7 +172,6 @@ export const createInsuranceDetails = async (req, res) => {
         const {
             provider_id,
             recipient_id,
-            doctor_id,
             prsrb_prov,
             pa,
             from_service_date,
@@ -228,7 +226,6 @@ export const createInsuranceDetails = async (req, res) => {
         const newInsuranceDetail = await InsuranceDetails.create({
             provider_id,
             recipient_id,
-            doctor_id,
             prsrb_prov,
             pa,
             from_service_date,
@@ -270,7 +267,6 @@ export const updateInsuranceDetails = async (req, res) => {
         const {
             provider_id,
             recipient_id,
-            doctor_id,
             prsrb_prov,
             pa,
             from_service_date,
@@ -319,13 +315,10 @@ export const updateInsuranceDetails = async (req, res) => {
             );
         }
 
-        console.log("doctor id ", doctor_id);
-
         // Create a new insurance detail entry
         const newInsuranceDetail = await InsuranceDetails.update({
             provider_id,
             recipient_id,
-            doctor_id,
             prsrb_prov,
             pa,
             from_service_date,
@@ -381,7 +374,7 @@ export const generatePdf = async(req, res)=>{
         if(insuranceDetails){
             console.log(insuranceDetails.pdf_location);
             const dateNow = Date.now();
-            const pdfName = `${insuranceDetails.InsuranceReceipient.name}-${insuranceDetails.InsuranceReceipient.receipient_ma}-${dateNow}.pdf`
+            const pdfName = `${insuranceDetails.InsuranceReceipient.name}-${insuranceDetails.InsuranceReceipient.recipient_ma}-${dateNow}.pdf`
              const pdf =  await generatePDF(pdfName,insuranceDetails);
             if(pdf){
                 if(insuranceDetails.pdf_location && insuranceDetails.pdf_location?.length){
@@ -444,7 +437,7 @@ export const downloadPDF =  async(req, res)=>{
                 URL =  insuranceDetails?.pdf_location;
             }else{
                 const dateNow = Date.now();
-                const pdfName = `${insuranceDetails.InsuranceReceipient.name}-${insuranceDetails.InsuranceReceipient.receipient_ma}-${dateNow}.pdf`
+                const pdfName = `${insuranceDetails.InsuranceReceipient.name}-${insuranceDetails.InsuranceReceipient.recipient_ma}-${dateNow}.pdf`
                 const pdf =  await generatePDF(pdfName,insuranceDetails);
                 if(pdf){
                     await InsuranceDetails.update(
@@ -585,12 +578,6 @@ export const getRenewalData = async (req, res) => {
                             required: true,
                           },
                           {
-                            model: DoctorDetails,
-                            as: 'DoctorDetail',
-                            attributes: ['doctor_name', 'doctor_phone_no'],
-                            required: true,
-                          },
-                          {
                             model: InsuranceReceipient,
                             as: 'InsuranceReceipient',
                             required: true,
@@ -600,7 +587,7 @@ export const getRenewalData = async (req, res) => {
                           include: [
                             [sequelize.col('InsuranceProvider.provider_name'), 'provider_name'],
                             [sequelize.col('InsuranceReceipient.name'), 'recipient_name'],
-                            [sequelize.col('InsuranceReceipient.receipient_ma'), 'recipient_ma'],
+                            [sequelize.col('InsuranceReceipient.recipient_ma'), 'recipient_ma'],
                             [sequelize.fn('DATE_FORMAT', sequelize.col('from_service_date'), '%Y-%m-%d'), 'from_service_date'],
                             [sequelize.fn('DATE_FORMAT', sequelize.col('to_service_date'), '%Y-%m-%d'), 'to_service_date'],
                           ],
@@ -836,35 +823,41 @@ export const singleInsuranceDetails = async(req, res)=>{
                     attributes: ['provider_name'],
                     required: true
                 },
-                {
-                    model: DoctorDetails,
-                    as: 'DoctorDetail',
-                    attributes: ['doctor_name',"doctor_phone_no"],
-                    required: true
-                },
                 { 
-                    model: InsuranceReceipient , 
+                    model: InsuranceReceipient, 
                     as: 'InsuranceReceipient', 
                     required: true,
-                    attributes:["name","receipient_ma"]
+                    attributes: ["name", "recipient_ma","dob"],
+                    include: [
+                        {
+                            model: DoctorDetails,  // Add the Doctor model here
+                            as: 'Doctor',   // Use the appropriate alias as defined in your associations
+                            attributes: ["doctor_name", "doctor_phone_no"], // Add whatever doctor attributes you need
+                            required: false // Change to true if you want inner join
+                        }
+                    ]
                 }
             ],
             attributes: {
                 include: [
                     [sequelize.literal('InsuranceProvider.provider_name'), 'provider_name'],
-                    [sequelize.literal('DoctorDetail.doctor_name'), 'doctor_name'],
-                    [sequelize.literal('DoctorDetail.doctor_phone_no'), 'doctor_number'],
                     [sequelize.literal('InsuranceReceipient.name'), 'recipient_name'],
-                    [sequelize.literal('InsuranceReceipient.receipient_ma'), 'recipient_ma'],
+                    [sequelize.literal('InsuranceReceipient.recipient_ma'), 'recipient_ma'],
+                    [sequelize.literal('InsuranceReceipient.dob'), 'dob'],
+                    // [sequelize.literal('InsuranceReceipient.Doctor.doctor_name'), 'doctor_name'], // Add doctor fields
+                    // [sequelize.literal('InsuranceReceipient.Doctor.doctor_phone_no'), 'doctor_phone_no'],
                     [sequelize.fn('DATE_FORMAT', sequelize.col('from_service_date'), '%Y-%m-%d'), 'from_service_date'],
                     [sequelize.fn('DATE_FORMAT', sequelize.col('to_service_date'), '%Y-%m-%d'), 'to_service_date']
                 ]
             },
-            where:{
-                ID:id
+            where: {
+                ID: id
             },
-            raw:true
+            raw: true
         });
+
+        insuranceProvider['doctor_name'] = insuranceProvider['InsuranceReceipient.Doctor.doctor_name']
+        insuranceProvider['doctor_number'] = insuranceProvider['InsuranceReceipient.Doctor.doctor_phone_no']
 
         if(Object.keys(insuranceProvider).length){
            return res.status(200).json({ message: 'Insurance Details added successfully', data: insuranceProvider, success:true });
@@ -920,7 +913,6 @@ export const renewInsurance = async(req, res)=>{
                     const {
                         provider_id,
                         recipient_id,
-                        doctor_id,
                         prsrb_prov,
                         pa,
                         from_service_date,
@@ -947,7 +939,6 @@ export const renewInsurance = async(req, res)=>{
                     const newInsuranceDetail = await InsuranceDetails.create({
                                 provider_id,
                                 recipient_id,
-                                doctor_id,
                                 prsrb_prov,
                                 pa,
                                 from_service_date,

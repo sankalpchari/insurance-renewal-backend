@@ -81,30 +81,59 @@ export const checkAndCreateDoctor = async (req, res, next) => {
 
 export const checkAndCreateRecipient = async (req, res, next) => {
     try {
-        const { recipient_ma, recipient_name } = req.body;
+        const { recipient_name:name, recipient_ma, doctor_id, prsrb_prov, recipient_is, dob } = req.body;
         const { type } = req.params;
-        if(type && type === "simple"){  
-           return next();
-        }
-            const insuranceRec = await InsuranceReceipient.findOne({
-                where:{
-                    receipient_ma:recipient_ma
-                }
-            })
 
-            if(insuranceRec){
-                req.body.recipient_id = insuranceRec.ID;
-            }else{
-                const newInsuranceRec = await InsuranceReceipient.create({
-                    receipient_ma:recipient_ma, 
-                    name:recipient_name
-                })
-                req.body.recipient_id = newInsuranceRec.ID; // Add new doctor's ID to req.body
+        // Skip validation for simple type
+        if (type && type === "simple") {
+            return next();
+        }
+
+        // Validate required fields
+        if (!name || !recipient_ma || !doctor_id || !prsrb_prov || !recipient_is || !dob) {
+            return res.status(400).json({ 
+                message: "All fields are required: name, recipient_ma, doctor_id, prsrb_prov, recipient_type, dob" 
+            });
+        }
+
+        // Check if recipient exists
+        const insuranceRec = await InsuranceReceipient.findOne({
+            where: {
+                recipient_ma: recipient_ma
             }
-        
+        });
+
+        if (insuranceRec) {
+            // Check if any fields need updating
+            const updates = {};
+            if (name !== insuranceRec.name) updates.name = name;
+            if (doctor_id !== insuranceRec.doctor_id) updates.doctor_id = doctor_id;
+            if (prsrb_prov !== insuranceRec.prsrb_prov) updates.prsrb_prov = prsrb_prov;
+            if (recipient_is !== insuranceRec.recipient_type) updates.recipient_type = recipient_is;
+            if (dob !== insuranceRec.dob) updates.dob = dob;
+
+            // If there are updates, apply them
+            if (Object.keys(updates).length > 0) {
+                await insuranceRec.update(updates);
+            }
+
+            req.body.recipient_id = insuranceRec.ID;
+        } else {
+            // Create new recipient if doesn't exist
+            const newRecipient = await InsuranceReceipient.create({
+                name,
+                recipient_ma,
+                doctor_id,
+                prsrb_prov,
+                recipient_type : recipient_is,
+                dob
+            });
+            req.body.recipient_id = newRecipient.ID;
+        }
+
         return next();
     } catch (e) {
-        console.log(e);
+        console.error('Error in checkAndCreateRecipient:', e);
         return res.status(500).json({
             message: "Error occurred while processing data, please check the fields and try again",
             success: false

@@ -26,16 +26,14 @@ export const getDashboardStats = async (req, res) => {
           },
           include: [
               { model: InsuranceProvider, as: 'InsuranceProvider', attributes: ['provider_name'] },
-              { model: DoctorDetails, as: 'DoctorDetail', attributes: ['doctor_name'] },
-              { model: InsuranceReceipient, as: 'InsuranceReceipient', attributes: ['ID', 'name', 'receipient_ma'] },
+              { model: InsuranceReceipient, as: 'InsuranceReceipient', attributes: ['ID', 'name', 'recipient_ma'] },
           ],
           attributes: {
               include: [
                   [sequelize.col('InsuranceProvider.provider_name'), 'provider_name'],
-                  [sequelize.col('DoctorDetail.doctor_name'), 'doctor_name'],
                   [sequelize.col('InsuranceReceipient.ID'), 'receipient_ID'],
                   [sequelize.col('InsuranceReceipient.name'), 'receipient_name'],
-                  [sequelize.col('InsuranceReceipient.receipient_ma'), 'receipient_ma'],
+                  [sequelize.col('InsuranceReceipient.recipient_ma'), 'recipient_ma'],
                   [sequelize.fn('DATE_FORMAT', sequelize.col('from_service_date'), '%Y-%m-%d'), 'from_service_date'],
                   [sequelize.fn('DATE_FORMAT', sequelize.col('to_service_date'), '%Y-%m-%d'), 'to_service_date']
               ]
@@ -60,15 +58,13 @@ export const getDashboardStats = async (req, res) => {
             },
             include: [
                 { model: InsuranceProvider, as: 'InsuranceProvider', attributes: ['provider_name']},
-                { model: DoctorDetails, as: 'DoctorDetail', attributes: ['doctor_name']},
-                { model: InsuranceReceipient, as: 'InsuranceReceipient', attributes: ['name','receipient_ma']},
+                { model: InsuranceReceipient, as: 'InsuranceReceipient', attributes: ['name','recipient_ma']},
               ],
               attributes: {
                   include: [
                       [sequelize.col('InsuranceProvider.provider_name'), 'provider_name'],
-                      [sequelize.col('DoctorDetail.doctor_name'), 'doctor_name'],
                       [sequelize.col('InsuranceReceipient.name'), 'receipient_name'],
-                      [sequelize.col('InsuranceReceipient.receipient_ma'), 'receipient_ma'],
+                      [sequelize.col('InsuranceReceipient.recipient_ma'), 'recipient_ma'],
                       [sequelize.fn('DATE_FORMAT', sequelize.col('from_service_date'), '%Y-%m-%d'), 'from_service_date'],
                       [sequelize.fn('DATE_FORMAT', sequelize.col('to_service_date'), '%Y-%m-%d'), 'to_service_date']
                   ]

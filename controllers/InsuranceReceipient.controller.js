@@ -27,7 +27,7 @@ export const getInsuranceReceipient = async (req, res) => {
         }
 
         if (recipient_ma) {
-            whereConditions.receipient_ma = { [Op.like]: `%${recipient_ma}%` };
+            whereConditions.recipient_ma = { [Op.like]: `%${recipient_ma}%` };
         }
 
         // Filter by exact match on date_created if provided
@@ -69,8 +69,12 @@ export const getInsuranceReceipient = async (req, res) => {
             attributes: [
                 "ID",
                 "name",
-                "receipient_ma",
+                "recipient_ma",
                 "is_deleted",
+                "doctor_id",
+                "prsrb_prov",
+                "recipient_type",
+                "dob",
                 [fn("DATE", col("date_created")), "date_created"],
             ],
             include: [
@@ -163,17 +167,17 @@ export const getSingleInsuranceRecipient = async (req, res) => {
 // Create a new insurance recipient
 export const createInsuranceRecipient = async (req, res) => {
 
-    const { name, receipient_ma, doctor_id, prsrb_prov, recipient_type, dob } = req.body;
+    const { name, recipient_ma, doctor_id, prsrb_prov, recipient_type, dob } = req.body;
 
     // Validate required fields
-    if (!name || !receipient_ma || !doctor_id || !prsrb_prov || !recipient_type || !dob) {
-        return res.status(400).json({ message: "All fields are required: name, receipient_ma, doctor_id, prsrb_prov, recipient_type, dob" });
+    if (!name || !recipient_ma || !doctor_id || !prsrb_prov || !recipient_type || !dob) {
+        return res.status(400).json({ message: "All fields are required: name, recipient_ma, doctor_id, prsrb_prov, recipient_type, dob" });
     }
 
     try {
         const newRecipient = await InsuranceReceipient.create({
             name,
-            receipient_ma,
+            recipient_ma,
             doctor_id,
             prsrb_prov,
             recipient_type,
@@ -195,7 +199,7 @@ export const createInsuranceRecipient = async (req, res) => {
 // Update an existing insurance recipient
 export const updateInsuranceReceipient = async (req, res) => {
     const { id } = req.params; // Expecting the ID in the request parameters
-    const { name, receipient_ma, doctor_id, prsrb_prov, recipient_type, dob } = req.body;
+    const { name, recipient_ma, doctor_id, prsrb_prov, recipient_type, dob } = req.body;
     try {
         const recipient = await InsuranceReceipient.findOne({
             where: { ID: id, is_deleted: false }
@@ -208,7 +212,7 @@ export const updateInsuranceReceipient = async (req, res) => {
         // Update the recipient's details
         await recipient.update({
             name,
-            receipient_ma,
+            recipient_ma,
             doctor_id,
             prsrb_prov,
             recipient_type,
@@ -242,3 +246,5 @@ export const deleteInsuranceReceipient = async (req, res) => {
         return res.status(500).json({ message: "Error occurred while trying to delete the recipient" });
     }
 }
+
+
