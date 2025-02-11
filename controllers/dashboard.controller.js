@@ -74,11 +74,42 @@ export const getDashboardStats = async (req, res) => {
             raw:true
         });
 
+
+        const renewals = await InsuranceDetails.findAll({
+            where: {
+                is_active: 1,
+                is_draft: 0,
+                record_type: 1,
+            },
+            attributes: {
+                include: [
+                    [literal('DATEDIFF(to_service_date, NOW())'), 'daysUntilExpiry'],
+                    [sequelize.fn('DATE_FORMAT', sequelize.col('from_service_date'), '%Y-%m-%d'), 'from_service_date'],
+                    [sequelize.fn('DATE_FORMAT', sequelize.col('to_service_date'), '%Y-%m-%d'), 'to_service_date']
+                ],
+            },
+            include: [
+                { model: InsuranceProvider, as: 'InsuranceProvider', attributes: ['provider_name'] },
+                { model: InsuranceReceipient, as: 'InsuranceReceipient', attributes: ['ID', 'name', 'recipient_ma'] },
+            ],
+            order: [[literal('DATEDIFF(to_service_date, NOW())'), 'ASC']], // Sort by soonest expiry
+            raw: true,
+        });
+        
+        const categorizedRenewals = {
+            overdue: renewals.filter(r => r.daysUntilExpiry < 0),
+            dueIn5Days: renewals.filter(r => r.daysUntilExpiry >= 0 && r.daysUntilExpiry <= 5),
+            dueIn1Week: renewals.filter(r => r.daysUntilExpiry >= 6 && r.daysUntilExpiry <= 7),
+            dueIn1Month: renewals.filter(r => r.daysUntilExpiry >= 8 && r.daysUntilExpiry <= 30),
+        };
+
+
         return res.status(200).json({
             success: true,
             data: {
                 upcomingRenewals,
                 recentRenewals,
+                categorizedRenewals
             }
         });
     } catch (e) {

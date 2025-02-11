@@ -1,11 +1,11 @@
-import { raw } from "mysql2";
-import InsuranceReceipient from "../models/InsuranceReceipient.model.js"
+import { logActivity } from "../utils/logger.js";
+import sequelize, { Op, fn, col } from "sequelize";
+import InsuranceReceipient from "../models/InsuranceReceipient.model.js";
 import InsuranceDetails from "../models/insuranceDetails.model.js";
-import sequelize,{Op, fn, col} from "sequelize";
+
 // Get all insurance recipients
 export const getInsuranceReceipient = async (req, res) => {
     try {
-        // Destructure and set default values for query parameters
         const {
             search_term = "",
             recipient_ma = "",
@@ -18,10 +18,8 @@ export const getInsuranceReceipient = async (req, res) => {
             page = 1
         } = req.query;
 
-        // Initialize where conditions, only fetching non-deleted records
         let whereConditions = { is_deleted: false };
 
-        // Apply search filters for recipient name and recipient MA if provided
         if (search_term) {
             whereConditions.name = { [Op.like]: `%${search_term}%` };
         }
@@ -30,16 +28,13 @@ export const getInsuranceReceipient = async (req, res) => {
             whereConditions.recipient_ma = { [Op.like]: `%${recipient_ma}%` };
         }
 
-        // Filter by exact match on date_created if provided
         if (dateCreated) {
             whereConditions.date_created = { [Op.eq]: dateCreated };
         }
 
-        // Define pagination parameters
         const limit = records_per_page === "all" ? null : parseInt(records_per_page);
         const offset = limit ? (parseInt(page) - 1) * limit : null;
 
-        // Define insurance details filter for date range
         let insuranceWhereConditions = { is_active: true };
         let required = false;
 
@@ -50,20 +45,11 @@ export const getInsuranceReceipient = async (req, res) => {
             required = true;
         }
 
-        // Count total records including filtering conditions
         const totalRecords = await InsuranceReceipient.count({
             where: whereConditions,
-            include: required
-                ? [{
-                    model: InsuranceDetails,
-                    as: "InsuranceDetails",
-                    required: true, // Ensures count considers date filtering
-                    where: insuranceWhereConditions
-                }]
-                : []
+            include: required ? [{ model: InsuranceDetails, as: "InsuranceDetails", required: true, where: insuranceWhereConditions }] : []
         });
 
-        // Fetch the filtered and sorted records
         const recipients = await InsuranceReceipient.findAll({
             where: whereConditions,
             attributes: [
@@ -81,9 +67,8 @@ export const getInsuranceReceipient = async (req, res) => {
                 {
                     model: InsuranceDetails,
                     as: "InsuranceDetails",
-                    required: required, // Ensures records are filtered correctly
-                    // where: insuranceWhereConditions,
-                    separate: true, // Enables ordering & limiting inside the included model
+                    required: required,
+                    separate: true,
                     order: [["created_date", "DESC"]],
                     limit: 1,
                 }
@@ -91,160 +76,108 @@ export const getInsuranceReceipient = async (req, res) => {
             order: [[sort_by, sort_order]],
             limit,
             offset,
-            nest: true, // Helps keep the structure cleaner when using raw: true
+            nest: true,
         });
 
-        // Calculate total pages
-        const totalPages = limit ? Math.ceil(totalRecords / limit) : 1;
+        await logActivity(req.user?.userId || null, "Viewed Insurance Recipients", "Insurance", null, null, req.query, req.ip, req.headers["user-agent"]);
 
-        // Respond with data and pagination details
         return res.status(200).json({
             data: recipients,
             message: "Data fetched successfully",
             success: true,
-            pagination: {
-                totalRecords,
-                totalPages,
-                currentPage: parseInt(page),
-                records_per_page: limit || totalRecords,
-            }
+            pagination: { totalRecords, totalPages: limit ? Math.ceil(totalRecords / limit) : 1, currentPage: parseInt(page), records_per_page: limit || totalRecords }
         });
     } catch (error) {
         console.error(error);
-        return res.status(500).json({
-            message: "Error occurred while trying to get the details",
-            success: false
-        });
+        return res.status(500).json({ message: "Error occurred while fetching data", success: false });
     }
 };
 
-
+// Get single insurance recipient
 export const getSingleInsuranceRecipient = async (req, res) => {
-    const { id } = req.params; // Expecting the ID in the request parameters
+    const { id } = req.params;
     const { get_insurance_details } = req.query;
     let include = [];
     let order = [];
 
     if (get_insurance_details !== undefined) {
-        include = [
-            {
-                model: InsuranceDetails,
-                as: 'InsuranceDetails',
-                required: false,
-            }
-        ];
-
-        order = [[{ model: InsuranceDetails },'is_active','DESC']]
+        include = [{ model: InsuranceDetails, as: "InsuranceDetails", required: false }];
+        order = [[{ model: InsuranceDetails }, "is_active", "DESC"]];
     }
 
     try {
-        const recipient = await InsuranceReceipient.findOne({
-            where: {
-                id,
-                is_deleted: false
-            },
-            include,
-            order    
-        });
+        const recipient = await InsuranceReceipient.findOne({ where: { id, is_deleted: false }, include, order });
 
-        if (!recipient) {
-            return res.status(404).json({ message: "Recipient not found" });
-        }
+        if (!recipient) return res.status(404).json({ message: "Recipient not found" });
 
-        return res.status(200).json({
-            data: recipient,
-            message: "Data fetched successfully"
-        });
+        await logActivity(req.user?.userId || null, "Viewed Insurance Recipient", "Insurance", id, null, req.query, req.ip, req.headers["user-agent"]);
+
+        return res.status(200).json({ data: recipient, message: "Data fetched successfully" });
     } catch (error) {
-        console.log(error)
-        return res.status(500).json({
-            message: "Error occurred while trying to get the details"
-        });
+        console.error(error);
+        return res.status(500).json({ message: "Error fetching details" });
     }
 };
 
-
-// Create a new insurance recipient
+// Create insurance recipient
 export const createInsuranceRecipient = async (req, res) => {
-
     const { name, recipient_ma, doctor_id, prsrb_prov, recipient_type, dob } = req.body;
 
-    // Validate required fields
     if (!name || !recipient_ma || !doctor_id || !prsrb_prov || !recipient_type || !dob) {
-        return res.status(400).json({ message: "All fields are required: name, recipient_ma, doctor_id, prsrb_prov, recipient_type, dob" });
+        return res.status(400).json({ message: "All fields are required" });
     }
 
     try {
-        const newRecipient = await InsuranceReceipient.create({
-            name,
-            recipient_ma,
-            doctor_id,
-            prsrb_prov,
-            recipient_type,
-            dob
-        });
+        const newRecipient = await InsuranceReceipient.create({ name, recipient_ma, doctor_id, prsrb_prov, recipient_type, dob });
 
-        return res.status(201).json({
-            data: newRecipient,
-            message: "New insurance recipient added successfully",
-        });
+        await logActivity(req.user?.userId || null, "Created New Insurance Recipient", "Insurance", newRecipient.ID, null, req.body, req.ip, req.headers["user-agent"]);
 
+        return res.status(201).json({ data: newRecipient, message: "Recipient added successfully" });
     } catch (error) {
-        console.error("Error creating insurance recipient:", error);
-        return res.status(500).json({ message: "Error occurred while trying to create the recipient" });
+        console.error("Error creating recipient:", error);
+        return res.status(500).json({ message: "Error occurred while creating recipient" });
     }
 };
 
-
-// Update an existing insurance recipient
+// Update insurance recipient
 export const updateInsuranceReceipient = async (req, res) => {
-    const { id } = req.params; // Expecting the ID in the request parameters
+    const { id } = req.params;
     const { name, recipient_ma, doctor_id, prsrb_prov, recipient_type, dob } = req.body;
+
     try {
-        const recipient = await InsuranceReceipient.findOne({
-            where: { ID: id, is_deleted: false }
-        });
+        const recipient = await InsuranceReceipient.findOne({ where: { ID: id, is_deleted: false } });
 
-        if (!recipient) {
-            return res.status(404).json({ message: "Recipient not found" });
-        }
+        if (!recipient) return res.status(404).json({ message: "Recipient not found" });
 
-        // Update the recipient's details
-        await recipient.update({
-            name,
-            recipient_ma,
-            doctor_id,
-            prsrb_prov,
-            recipient_type,
-            dob
-        });
-        return res.status(200).json({
-             data:recipient,
-            "message":"Insurance receipient updated"
-        });
+        const previousData = recipient.toJSON();
+
+        await recipient.update({ name, recipient_ma, doctor_id, prsrb_prov, recipient_type, dob });
+
+        await logActivity(req.user?.userId || null, "Updated Insurance Recipient", "Insurance", id, previousData, req.body, req.ip, req.headers["user-agent"]);
+
+        return res.status(200).json({ data: recipient, message: "Recipient updated" });
     } catch (error) {
-        return res.status(500).json({ message: "Error occurred while trying to update the recipient" });
+        console.error(error);
+        return res.status(500).json({ message: "Error updating recipient" });
     }
-}
+};
 
-// Soft delete an insurance recipient
+// Soft delete insurance recipient
 export const deleteInsuranceReceipient = async (req, res) => {
-    const { id } = req.params; // Expecting the ID in the request parameters
+    const { id } = req.params;
+
     try {
-        const recipient = await InsuranceReceipient.findOne({
-            where: { ID: id }
-        });
+        const recipient = await InsuranceReceipient.findOne({ where: { ID: id } });
 
-        if (!recipient) {
-            return res.status(404).json({ message: "Recipient not found" });
-        }
+        if (!recipient) return res.status(404).json({ message: "Recipient not found" });
 
-        // Soft delete the recipient
         await recipient.update({ is_deleted: true });
+
+        await logActivity(req.user?.userId || null, "Deleted Insurance Recipient", "Insurance", id, recipient.toJSON(), { is_deleted: true }, req.ip, req.headers["user-agent"]);
+
         return res.status(200).json({ message: "Recipient deleted successfully" });
     } catch (error) {
-        return res.status(500).json({ message: "Error occurred while trying to delete the recipient" });
+        console.error(error);
+        return res.status(500).json({ message: "Error deleting recipient" });
     }
-}
-
-
+};

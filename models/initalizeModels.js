@@ -7,6 +7,7 @@ import Roles from "./roles.model.js";
 import TokenBlacklist from "./tokenBlacklist.model.js";
 import InsuranceReceipient from "./InsuranceReceipient.model.js";
 import EmailStatus from "./emailStatus.model.js";
+import ActivityTracker from "./activityTracker.model.js";
 
 // Function to initialize default roles
 const initializeRoles = async () => {
@@ -52,7 +53,8 @@ export const syncDatabase = async () => {
         Roles,
         TokenBlacklist,
         InsuranceReceipient,
-        EmailStatus
+        EmailStatus,
+        ActivityTracker
     };
     
     Object.keys(models).forEach(modelName => {
