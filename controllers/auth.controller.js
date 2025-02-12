@@ -12,6 +12,10 @@ const loginUser = async (req, res) => {
             return res.status(401).json({ message: 'Invalid email or password.' });
         }
 
+        if(user.is_deleted == 1){
+            return res.status(401).json({ message: 'Your account is no longer active, please contact admin.' });
+        }
+
         const isMatch = await user.comparePassword(password);
         if (!isMatch) {
             return res.status(401).json({ message: 'Invalid email or password.' });

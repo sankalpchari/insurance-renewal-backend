@@ -14,6 +14,7 @@ const initializeRoles = async () => {
     try {
         // Define the default roles
         const roles = [
+            { role_name: 'super_admin' },
             { role_name: 'admin' },
             { role_name: 'user' }
         ];

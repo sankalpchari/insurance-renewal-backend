@@ -1,1 +1,51 @@
 1. dashboard stats for upcoming needs to be checked , not removing updated records
+
+{
+  "permissions": {
+    "dashboard": {
+      "view": true
+    },
+    "authorizations": {
+      "create": false,
+      "read": true,
+      "update": false,
+      "delete": false
+    },
+    "doctors": {
+      "create": true,
+      "read": true,
+      "update": true,
+      "delete": false
+    },
+    "clients": {
+      "create": true,
+      "read": true,
+      "update": true,
+      "delete": false
+    },
+    "accounts": {
+      "create": true,
+      "read": true,
+      "update": true,
+      "delete": true
+    },
+    "users": {
+      "create": true,
+      "read": true,
+      "update": true,
+      "delete": false
+    },
+    "settings": {
+      "view": true,
+      "update": true
+    },
+    "insurance": {
+      "create": true,
+      "read": true,
+      "update": true,
+      "delete": false,
+      "generate_pdf": true,
+      "download_pdf": true
+    }
+  }
+}
