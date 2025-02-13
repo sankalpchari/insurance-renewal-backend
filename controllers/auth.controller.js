@@ -66,7 +66,7 @@ const signup = async (req, res) => {
             l_name,
             email,
             password,
-            role_id: role || 'user',
+            role_id: role,
         });
 
         // Log user registration

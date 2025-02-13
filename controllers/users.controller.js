@@ -3,6 +3,9 @@ import sequelize, { Op, fn, col, where } from "sequelize";
 import Roles from "../models/roles.model.js";
 import bcrypt from 'bcrypt';
 import { logActivity } from "../utils/logger.js";
+import {sendMailgunEmail, createEmailBody} from "../services/email.service.js";
+import handlebars from "handlebars";
+import crypto from "crypto"
 
 export const getUserDetails = async (req, res) => {
     try {
@@ -266,26 +269,38 @@ export const deleteUser = async (req, res) => {
         // Fetch the requesting user
         const requestingUser = await User.findOne({ where: { ID: userId } });
 
-        const roles = await Roles.findAll({
-            where:{
-                is_deleted:0
-            }, 
-            raw:true
-        });
+        if (!requestingUser) {
+            return res.status(403).json({
+                message: "Unauthorized: User not found",
+                success: false
+            });
+        }
 
-       
-        const requestingUserRoleName = roles.find((role)=>{
-            if(role.ID == requestingUser.role_id){
-                return role;
-            }
-        })
+        // Prevent a user from deleting themselves
+        if (userId == id) {
+            return res.status(403).json({
+                message: "You cannot delete your own account",
+                success: false
+            });
+        }
 
+        // Get all active roles
+        const roles = await Roles.findAll({ where: { is_deleted: 0 }, raw: true });
+        
+        const requestingUserRoleName = roles.find(role => role.ID == requestingUser.role_id)?.role_name;
 
-        console.log(requestingUserRoleName, "requestingUserRoleName")
-
-        if (!requestingUser || requestingUserRoleName.role_name !== "admin") {
+        if (requestingUserRoleName !== "admin") {
             return res.status(403).json({
                 message: "Unauthorized: Only admins can delete users",
+                success: false
+            });
+        }
+
+        // Check if there is more than one user
+        const userCount = await User.count({ where: { is_deleted: 0 } });
+        if (userCount <= 1) {
+            return res.status(403).json({
+                message: "Unauthorized: You cannot delete the last user",
                 success: false
             });
         }
@@ -299,22 +314,17 @@ export const deleteUser = async (req, res) => {
             });
         }
 
-
-        const userRoleName = roles.find((role)=>{
-            if(role.ID == user.role_id){
-                return role;
-            }
-        })
+        const userRoleName = roles.find(role => role.ID == user.role_id)?.role_name;
 
         // Prevent an admin from deleting another admin
-        if (userRoleName.role_name === "admin") {
+        if (userRoleName === "admin") {
             return res.status(403).json({
                 message: "Unauthorized: You cannot delete another admin",
                 success: false
             });
         }
 
-        // Update is_deleted to true
+        // Soft delete user
         user.is_deleted = 1;
         await user.save();
 
@@ -329,7 +339,6 @@ export const deleteUser = async (req, res) => {
             message: "User deleted successfully",
             success: true
         });
-
     } catch (e) {
         console.error("Error deleting user:", e);
         return res.status(500).json({
@@ -339,3 +348,82 @@ export const deleteUser = async (req, res) => {
     }
 };
 
+
+export const createUser = async (req, res) => {
+    try {
+        const { f_name, l_name, email, role_id } = req.body;
+
+        // Check if user already exists
+        const existingUser = await User.findOne({ where: { email } });
+        if (existingUser) {
+            return res.status(400).json({
+                message: "User with this email already exists",
+                success: false
+            });
+        }
+
+        // Generate random password if not provided
+        const randomPassword = crypto.randomBytes(8).toString("hex");
+
+        // Create user
+        const newUser = await User.create({
+            f_name,
+            l_name,
+            email,
+            password:randomPassword,
+            role_id,
+            is_deleted: 0
+        });
+
+        const emailBody = createEmailBody("accountCreation", {
+            f_name,
+            l_name,
+            email: "sankalpchari@gmail.com",
+            tempPassword: randomPassword,
+            loginUrl: process.env.FE_URL
+        });
+
+        await sendMailgunEmail({
+            to: "sankalpchari@gmail.com",
+            subject: "Your New Account Details",
+            html: emailBody
+        })
+
+        return res.status(201).json({
+            message: "User created successfully",
+            success: true,
+            data: newUser
+        });
+    } catch (e) {
+        console.error("Error creating user:", e);
+        return res.status(500).json({
+            message: "Failed to create user",
+            success: false
+        });
+    }
+};
+
+
+export const getRoles = async(req, res)=>{
+    try{
+        console.log("roles called");
+        const roles = await Roles.findAll({ 
+            where: { is_deleted: 0 }, 
+            raw: true, 
+            order: [["sort_order", "ASC"]] // Order by sort_order in ascending order
+        });
+        console.log(roles);
+        return res.status(200).json({
+                message: "Roles fetched successfully",
+                success: true,
+                data : roles
+        });
+
+    }catch(e){
+        console.error("Error deleting user:", e);
+        return res.status(500).json({
+            message: "Failed to get user roles",
+            success: false
+        });
+    }
+}

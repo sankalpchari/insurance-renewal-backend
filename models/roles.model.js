@@ -13,6 +13,11 @@ const Roles = sequelize.define("Roles", {
     role_name: {
         type: DataTypes.STRING,
         allowNull: false,
+
+    },
+    sort_order:{
+        type: DataTypes.INTEGER,
+        allowNull: false,
     },
     is_deleted: {
         type: DataTypes.BOOLEAN,

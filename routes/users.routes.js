@@ -5,19 +5,29 @@ getUserDetails,
 updateUserPassword,
 getUsersList,
 getUserById,
-deleteUser
+deleteUser,
+createUser,
+getRoles
 } from "../controllers/users.controller.js";
 import {
-    passwordValidation
+    passwordValidation,
+    validateUser
 } from "../middleware/users.middleware.js";
 
 const userRoutes = express.Router();
 
-
 userRoutes.get("/get-logged-in-user-details", auth, getUserDetails)
+
 userRoutes.post("/update-password", auth, passwordValidation, updateUserPassword)
-userRoutes.get("/", auth, getUsersList);
+
+userRoutes.get("/roles", auth, getRoles);
+
 userRoutes.get("/:id", auth, getUserById);
+
 userRoutes.delete("/:id", auth, deleteUser);
+
+userRoutes.get("/", auth, getUsersList);
+
+userRoutes.post("/", auth, validateUser, createUser);
 
 export default userRoutes;

@@ -14,9 +14,9 @@ const initializeRoles = async () => {
     try {
         // Define the default roles
         const roles = [
-            { role_name: 'super_admin' },
-            { role_name: 'admin' },
-            { role_name: 'user' }
+            { role_name: 'super_admin', sort_order: 1 },
+            { role_name: 'admin', sort_order: 2 },
+            { role_name: 'user', sort_order: 3 }
         ];
 
         // Loop through the roles and insert them if they don't already exist

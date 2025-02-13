@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <meta charset="UTF-8">
+    <title>Account Created</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #f4f4f4;
+            margin: 0;
+            padding: 0;
+        }
+
+        .container {
+            max-width: 600px;
+            margin: 20px auto;
+            background: #ffffff;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+            text-align: center;
+        }
+
+        h2 {
+            color: #333;
+        }
+
+        p {
+            font-size: 16px;
+            color: #666;
+        }
+
+        .button {
+            display: inline-block;
+            padding: 10px 20px;
+            margin-top: 20px;
+            text-decoration: none;
+            background: #007bff;
+            color: #ffffff;
+            border-radius: 5px;
+        }
+
+        .footer {
+            margin-top: 20px;
+            font-size: 14px;
+            color: #999;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="container">
+        <h2>Welcome, {{f_name}} {{l_name}}!</h2>
+        <p>Your account has been successfully created.</p>
+        <p><strong>Email:</strong> {{email}}</p>
+        <p><strong>Temporary Password:</strong> {{tempPassword}}</p>
+        <p>Please log in and change your password as soon as possible.</p>
+        <a href="{{loginUrl}}" class="button">Click here to log in</a>
+        <p class="footer">Best regards,<br>The Team</p>
+    </div>
+</body>
+
+</html>
