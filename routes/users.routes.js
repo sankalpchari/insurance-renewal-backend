@@ -7,7 +7,8 @@ getUsersList,
 getUserById,
 deleteUser,
 createUser,
-getRoles
+getRoles,
+editUser
 } from "../controllers/users.controller.js";
 import {
     passwordValidation,
@@ -29,5 +30,6 @@ userRoutes.delete("/:id", auth, deleteUser);
 userRoutes.get("/", auth, getUsersList);
 
 userRoutes.post("/", auth, validateUser, createUser);
+userRoutes.patch("/:id", auth, validateUser, editUser);
 
 export default userRoutes;

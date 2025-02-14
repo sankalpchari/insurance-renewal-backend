@@ -68,7 +68,7 @@ export const getUserDetails = async (req, res) => {
 export const getUsersList = async (req, res) => {
     try {
         const {
-            search_term = "",
+            searchTerm = "",
             dateCreated = "",
             sort_by = "f_name",
             sort_order = "asc",
@@ -81,10 +81,10 @@ export const getUsersList = async (req, res) => {
 
         let whereClause = {};
         
-        if (search_term) {
+        if (searchTerm) {
             whereClause[Op.or] = [
-                { f_name: { [Op.iLike]: `%${search_term}%` } },
-                { email: { [Op.iLike]: `%${search_term}%` } }
+                { f_name: { [Op.like]: `%${searchTerm}%` } },
+                { email: { [Op.like]: `%${searchTerm}%` } }
             ];
         }
 
@@ -206,7 +206,7 @@ export const getUserById = async(req, res)=>{
         const { userId } = req.user;
 
         const user = await User.findOne({   
-            where: { ID: userId },
+            where: { ID: id },
             include: [
                 {
                     model: Roles,
@@ -375,6 +375,9 @@ export const createUser = async (req, res) => {
             is_deleted: 0
         });
 
+        await logActivity(req.user?.id, "create", "users", newUser.id, null, { f_name, l_name, email, role_id }, req.ip, req.headers["user-agent"]);
+
+
         const emailBody = createEmailBody("accountCreation", {
             f_name,
             l_name,
@@ -426,4 +429,53 @@ export const getRoles = async(req, res)=>{
             success: false
         });
     }
-}
+};
+
+export const editUser = async (req, res) => {
+    try {
+        const { id } = req.params;
+        const { f_name, l_name, email, role_id } = req.body;
+
+        // Check if the user exists
+        const user = await User.findByPk(id);
+        if (!user) {
+            return res.status(404).json({
+                message: "User not found",
+                success: false
+            });
+        }
+
+        // Check if email is being updated and if it already exists for another user
+        if (email && email !== user.email) {
+            const existingUser = await User.findOne({ where: { email } });
+            if (existingUser && existingUser.id !== id) {
+                return res.status(400).json({
+                    message: "Email is already taken by another user",
+                    success: false
+                });
+            }
+        }
+
+        // Store previous data for logging
+        const previousData = { f_name: user.f_name, l_name: user.l_name, email: user.email, role_id: user.role_id };
+
+        // Update user details
+        await user.update({ f_name, l_name, email, role_id });
+
+        // Log activity (if logging is implemented)
+        await logActivity(req.user?.id, "update", "users", id, previousData, { f_name, l_name, email, role_id }, req.ip, req.headers["user-agent"]);
+
+        return res.status(200).json({
+            message: "User updated successfully",
+            success: true,
+            data: user
+        });
+
+    } catch (e) {
+        console.error("Error updating user:", e);
+        return res.status(500).json({
+            message: "Failed to update user",
+            success: false
+        });
+    }
+};
