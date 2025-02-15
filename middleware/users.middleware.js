@@ -17,6 +17,7 @@ export const passwordValidation = (req, res, next) => {
 };
 
 export const validateUser = (req, res, next) => {
+    console.log(req.body);
     const { error } = userCreate.validate(req.body);
     if (error) {
         return res.status(400).json({

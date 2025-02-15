@@ -8,7 +8,23 @@ const getRecordType = (save_type)=>{
     return record_type
 }
 
+const parseJwtExpiry = (expiryString) => {
+    const match = expiryString.match(/^(\d+)([hmd])$/); // Match number + unit
+    if (!match) return null;
+
+    const value = parseInt(match[1], 10);
+    const unit = match[2];
+
+    switch (unit) {
+        case 'h': return value * 60 * 60; // Convert hours to seconds
+        case 'm': return value * 60; // Convert minutes to seconds
+        case 'd': return value * 24 * 60 * 60; // Convert days to seconds
+        default: return null;
+    }
+};
+
 
 export {
-    getRecordType
+    getRecordType,
+    parseJwtExpiry
 }

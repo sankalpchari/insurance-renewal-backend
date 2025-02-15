@@ -219,6 +219,7 @@ export const getUserById = async(req, res)=>{
                 "f_name",
                 "l_name",
                 "email",
+                "permission",
                 "role_id",
                 [fn("DATE", col("User.date_created")), "date_created"],
                 [fn("NOT", col("User.is_deleted")), "active"],
@@ -351,7 +352,7 @@ export const deleteUser = async (req, res) => {
 
 export const createUser = async (req, res) => {
     try {
-        const { f_name, l_name, email, role_id } = req.body;
+        const { f_name, l_name, email, role_id, permission } = req.body;
 
         // Check if user already exists
         const existingUser = await User.findOne({ where: { email } });
@@ -372,6 +373,7 @@ export const createUser = async (req, res) => {
             email,
             password:randomPassword,
             role_id,
+            permission:JSON.stringify(permission),
             is_deleted: 0
         });
 
@@ -434,7 +436,8 @@ export const getRoles = async(req, res)=>{
 export const editUser = async (req, res) => {
     try {
         const { id } = req.params;
-        const { f_name, l_name, email, role_id } = req.body;
+        const { f_name, l_name, email, role_id, permission } = req.body;
+        console.log(permission, "permission")
 
         // Check if the user exists
         const user = await User.findByPk(id);
@@ -457,10 +460,10 @@ export const editUser = async (req, res) => {
         }
 
         // Store previous data for logging
-        const previousData = { f_name: user.f_name, l_name: user.l_name, email: user.email, role_id: user.role_id };
+        const previousData = { f_name: user.f_name, l_name: user.l_name, email: user.email, role_id: user.role_id , permission};
 
         // Update user details
-        await user.update({ f_name, l_name, email, role_id });
+        await user.update({ f_name, l_name, email, role_id, permission:JSON.stringify(permission) });
 
         // Log activity (if logging is implemented)
         await logActivity(req.user?.id, "update", "users", id, previousData, { f_name, l_name, email, role_id }, req.ip, req.headers["user-agent"]);

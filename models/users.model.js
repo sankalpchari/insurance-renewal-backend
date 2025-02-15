@@ -41,6 +41,10 @@ const User = sequelize.define("User", {
           key: 'ID',
       },
     },
+    permission:{
+        type: DataTypes.TEXT,
+        allowNull: false,
+    },
     is_deleted: {
         type: DataTypes.BOOLEAN,
         allowNull: false,
@@ -87,7 +91,7 @@ User.prototype.createJWT = function () {
         },
         process.env.JWT_SECRET,
         {
-            expiresIn: '30d', // Set expiration for the token
+            expiresIn: process.env.JWT_TOKEN_EXP, // Set expiration for the token
         }
     );
 };

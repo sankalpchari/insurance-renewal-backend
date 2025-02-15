@@ -21,30 +21,71 @@ export const getInsuranceDetails = async (req, res) => {
             toDate,
             is_active,
             is_email_sent,
-            sortBy = 'date',  // default sort by 'date'
-            sortOrder = 'asc', // default sort order 'asc'
-            recordsPerPage = 10, // default records per page
-            page = 1, // default to first page
+            sortBy = 'date',  
+            sortOrder = 'asc', 
+            recordsPerPage = 10, 
+            page = 1, 
             is_default, 
             is_draft,
-            searchType="",
-            recordsType = ""
+            searchType = "",
+            recordsType = "",
+            dueIn
         } = req.query;
 
-        // Define where conditions based on filters
-        let whereData = {
-            where: {},
-        };
+        console.log(dueIn, "dueIn");
+
+        let whereData = { where: {} };
         let order = [];
         let attributes = [];
         const currentDate = new Date();
 
-        // Filter by is_default if provided
-        if (is_default) {
-            whereData.where.is_default = is_default;
+        // Process `dueIn` filter
+        if (dueIn) {
+            const match = dueIn.match(/^(\d+)([dwmy])$/); // Extract number & unit
+            if (match) {
+                const value = parseInt(match[1], 10);
+                const unit = match[2];
+
+                let dateCondition;
+                switch (unit) {
+                    case "d": // Days
+                        dateCondition = new Date();
+                        dateCondition.setDate(currentDate.getDate() + value);
+                        break;
+                    case "w": // Weeks
+                        dateCondition = new Date();
+                        dateCondition.setDate(currentDate.getDate() + value * 7);
+                        break;
+                    case "m": // Months
+                        dateCondition = new Date();
+                        dateCondition.setMonth(currentDate.getMonth() + value);
+                        break;
+                    case "y": // Years
+                        dateCondition = new Date();
+                        dateCondition.setFullYear(currentDate.getFullYear() + value);
+                        break;
+                    default:
+                        dateCondition = null;
+                }
+
+                if (dateCondition) {
+                    if (dueIn === "0d") {
+                        whereData.where.to_service_date = { [sequelize.Op.lt]: currentDate }; // Expired
+                    } else {
+                        whereData.where.to_service_date = {
+                            [sequelize.Op.between]: [currentDate, dateCondition]
+                        };
+                    }
+                }
+            }
         }
 
-        // Search by term if provided (assuming searching by recipient name or MA number)
+        // Other filters
+        if (is_default) whereData.where.is_default = is_default;
+        if (is_active) whereData.where.is_active = { [sequelize.Op.eq]: is_active };
+        if (is_email_sent) whereData.where.is_email_sent = { [sequelize.Op.eq]: is_email_sent };
+        if (is_draft) whereData.where.is_draft = { [sequelize.Op.eq]: is_draft };
+
         if (searchTerm) {
             whereData.where[sequelize.Op.or] = [
                 { '$InsuranceReceipient.name$': { [sequelize.Op.like]: `%${searchTerm}%` } },
@@ -52,73 +93,41 @@ export const getInsuranceDetails = async (req, res) => {
             ];
         }
 
-        // Filter by date range if provided
         if (fromDate && toDate) {
-            whereData.where.from_service_date = {
-                [sequelize.Op.between]: [fromDate, toDate]
-            };
+            whereData.where.from_service_date = { [sequelize.Op.between]: [fromDate, toDate] };
         } else if (fromDate) {
-            whereData.where.from_service_date = {
-                [sequelize.Op.gte]: fromDate
-            };
+            whereData.where.from_service_date = { [sequelize.Op.gte]: fromDate };
         } else if (toDate) {
-            whereData.where.from_service_date = {
-                [sequelize.Op.lte]: toDate
-            };
+            whereData.where.from_service_date = { [sequelize.Op.lte]: toDate };
         }
 
-
-        if(is_active){
-            whereData.where.is_active = {
-                [sequelize.Op.eq]: is_active
-            };
-        }
-
-        if(is_email_sent){
-            whereData.where.is_email_sent = {
-                [sequelize.Op.eq]: is_email_sent
-            };
-        }
-
-        if(is_draft){
-            whereData.where.is_draft = {
-                [sequelize.Op.eq]: is_draft
-            };
-        }
-
-
-        switch(searchType){
+        switch (searchType) {
             case "upcoming":
-                attributes.push([literal('DATEDIFF(to_service_date, NOW())'), 'daysUntilExpiry']);
-                whereData.where.to_service_date = {  [Op.gte]: currentDate, };
-                order.push([literal('DATEDIFF(to_service_date, NOW())'), 'ASC'])
-            break;
+                attributes.push([sequelize.literal('DATEDIFF(to_service_date, NOW())'), 'daysUntilExpiry']);
+                whereData.where.to_service_date = { [sequelize.Op.gte]: currentDate };
+                order.push([sequelize.literal('DATEDIFF(to_service_date, NOW())'), 'ASC']);
+                break;
             case "recent":
-                console.log("called");
-                attributes.push([literal('DATEDIFF(NOW(), from_service_date)'), 'daysSinceRenewal']);
-                order.push([literal('DATEDIFF(NOW(), from_service_date)'), 'ASC'])
-            break;
+                attributes.push([sequelize.literal('DATEDIFF(NOW(), from_service_date)'), 'daysSinceRenewal']);
+                order.push([sequelize.literal('DATEDIFF(NOW(), from_service_date)'), 'ASC']);
+                break;
             default:
-                // do nothing 
+                // No special filtering
         }
 
-        // Sorting logic
-    
         if (sortBy === 'date') {
             order.push(['from_service_date', sortOrder]);
         } else if (sortBy === 'name') {
             order.push([sequelize.col('InsuranceReceipient.name'), sortOrder]);
         }
 
-        // Calculate offset based on current page and records per page
         const limit = parseInt(recordsPerPage);
         const offset = (parseInt(page) - 1) * limit;
 
-        // Fetch insurance details with filters, sorting, and pagination
         const { rows: insuranceDetails, count: totalRecords } = await InsuranceDetails.findAndCountAll({
             include: [
-                {  model: InsuranceProvider,  as: 'InsuranceProvider',  attributes: ['provider_name'],  required: true },
-                { model: InsuranceReceipient, as: 'InsuranceReceipient', required: true,}
+                { model: InsuranceProvider, as: 'InsuranceProvider', attributes: ['provider_name'], required: true },
+                { model: InsuranceReceipient, as: 'InsuranceReceipient', required: true }
             ],
             attributes: {
                 include: [
@@ -129,7 +138,7 @@ export const getInsuranceDetails = async (req, res) => {
                     [sequelize.fn('DATE_FORMAT', sequelize.col('from_service_date'), '%Y-%m-%d'), 'from_service_date'],
                     [sequelize.fn('DATE_FORMAT', sequelize.col('to_service_date'), '%Y-%m-%d'), 'to_service_date'],
                     [
-                        sequelize.literal(`CASE WHEN record_type = 1 THEN 'Insurance' WHEN record_type = 2 THEN 'Template' ELSE 'Unknown' END`), 
+                        sequelize.literal(`CASE WHEN record_type = 1 THEN 'Insurance' WHEN record_type = 2 THEN 'Template' ELSE 'Unknown' END`),
                         'record_type_label'
                     ]
                 ]
@@ -141,26 +150,24 @@ export const getInsuranceDetails = async (req, res) => {
             raw: true
         });
 
-        // Calculate pagination details
         const totalPages = Math.ceil(totalRecords / limit);
 
-        // Return the data and pagination info
         return res.status(200).json({
             data: insuranceDetails,
             pagination: {
-                totalRecords: totalRecords,
-                totalPages: totalPages,
+                totalRecords,
+                totalPages,
                 recordsPerPage: limit,
                 currentPage: parseInt(page)
             },
             message: "Data fetched successfully",
-            success:true
+            success: true
         });
     } catch (e) {
         console.log(e);
         return res.status(500).json({
             message: "Failed to get insurance details",
-            success:false
+            success: false
         });
     }
 };

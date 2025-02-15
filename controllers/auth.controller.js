@@ -2,6 +2,7 @@ import bcrypt from "bcrypt";
 import User from "../models/users.model.js";
 import TokenBlacklist from "../models/tokenBlacklist.model.js";
 import { logActivity } from "../utils/logger.js";
+import {parseJwtExpiry} from "../utils/helpers.js";
 
 const loginUser = async (req, res) => {
     const { email, password } = req.body;
@@ -35,12 +36,17 @@ const loginUser = async (req, res) => {
             req.headers['user-agent']
         );
 
+        const expiryInSeconds = parseJwtExpiry(process.env.JWT_TOKEN_EXP)
+        const tokenExpiryTimestamp = Math.floor(Date.now() / 1000) + expiryInSeconds;
+
         return res.status(200).json({
             userId: user.ID,
             email: user.email,
             role: user.role_id,
             name: user.f_name + " " + user.l_name,
             token,
+            permission:user.permission,
+            tokenExpiryTimestamp
         });
     } catch (error) {
         console.error('Login error:', error);
