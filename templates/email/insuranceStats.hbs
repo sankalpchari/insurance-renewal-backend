@@ -1,0 +1,221 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <meta charset="UTF-8">
+    <title>Insurance Expiry Notification</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #f4f4f4;
+            margin: 0;
+            padding: 0;
+        }
+
+        .container {
+            max-width: 800px;
+            margin: 20px auto;
+            background: #ffffff;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+        }
+
+        h2 {
+            color: #333;
+            text-align: center;
+        }
+
+        .section {
+            margin-top: 20px;
+            padding: 15px;
+            border-radius: 5px;
+        }
+
+        .overdue {
+            background: #ffcccc;
+        }
+
+        .due5days {
+            background: #ffeeba;
+        }
+
+        .due1week {
+            background: #fff3cd;
+        }
+
+        .due1month {
+            background: #d4edda;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 10px;
+        }
+
+        th,
+        td {
+            border: 1px solid #ddd;
+            padding: 8px;
+            text-align: left;
+        }
+
+        th {
+            background-color: #f2f2f2;
+        }
+
+        .footer {
+            margin-top: 20px;
+            font-size: 14px;
+            color: #999;
+            text-align: center;
+        }
+
+        .button-container {
+            text-align: center;
+            margin-top: 20px;
+        }
+
+        .button {
+            display: inline-block;
+            padding: 12px 20px;
+            text-decoration: none;
+            background: #007bff;
+            color: #ffffff;
+            border-radius: 5px;
+            font-weight: bold;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="container">
+        <h2>Insurance Expiry Notification</h2>
+
+        <!-- Overdue Section -->
+        {{#if overdue.length}}
+        <div class="section overdue">
+            <h3>🚨 Overdue Records</h3>
+            <table>
+                <thead>
+                    <tr>
+                        <th>Provider</th>
+                        <th>Recipient</th>
+                        <th>PA Number</th>
+                        <th>Procedure Code</th>
+                        <th>Days Overdue</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {{#each overdue}}
+                    <tr>
+                        <td>{{provider_name}}</td>
+                        <td>{{recipient_name}} ({{recipient_ma}})</td>
+                        <td>{{pa}}</td>
+                        <td>{{procedure_code}}</td>
+                        <td>{{daysUntilExpiry}}</td>
+                    </tr>
+                    {{/each}}
+                </tbody>
+            </table>
+        </div>
+        {{/if}}
+
+        <!-- Due in 5 Days Section -->
+        {{#if dueIn5Days.length}}
+        <div class="section due5days">
+            <h3>⚠️ Due in 5 Days</h3>
+            <table>
+                <thead>
+                    <tr>
+                        <th>Provider</th>
+                        <th>Recipient</th>
+                        <th>PA Number</th>
+                        <th>Procedure Code</th>
+                        <th>Days Until Expiry</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {{#each dueIn5Days}}
+                    <tr>
+                        <td>{{provider_name}}</td>
+                        <td>{{recipient_name}} ({{recipient_ma}})</td>
+                        <td>{{pa}}</td>
+                        <td>{{procedure_code}}</td>
+                        <td>{{daysUntilExpiry}}</td>
+                    </tr>
+                    {{/each}}
+                </tbody>
+            </table>
+        </div>
+        {{/if}}
+
+        <!-- Due in 1 Week Section -->
+        {{#if dueIn1Week.length}}
+        <div class="section due1week">
+            <h3>🟡 Due in 1 Week</h3>
+            <table>
+                <thead>
+                    <tr>
+                        <th>Provider</th>
+                        <th>Recipient</th>
+                        <th>PA Number</th>
+                        <th>Procedure Code</th>
+                        <th>Days Until Expiry</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {{#each dueIn1Week}}
+                    <tr>
+                        <td>{{provider_name}}</td>
+                        <td>{{recipient_name}} ({{recipient_ma}})</td>
+                        <td>{{pa}}</td>
+                        <td>{{procedure_code}}</td>
+                        <td>{{daysUntilExpiry}}</td>
+                    </tr>
+                    {{/each}}
+                </tbody>
+            </table>
+        </div>
+        {{/if}}
+
+        <!-- Due in 1 Month Section -->
+        {{#if dueIn1Month.length}}
+        <div class="section due1month">
+            <h3>✅ Due in 1 Month</h3>
+            <table>
+                <thead>
+                    <tr>
+                        <th>Provider</th>
+                        <th>Recipient</th>
+                        <th>PA Number</th>
+                        <th>Procedure Code</th>
+                        <th>Days Until Expiry</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {{#each dueIn1Month}}
+                    <tr>
+                        <td>{{provider_name}}</td>
+                        <td>{{recipient_name}} ({{recipient_ma}})</td>
+                        <td>{{pa}}</td>
+                        <td>{{procedure_code}}</td>
+                        <td>{{daysUntilExpiry}}</td>
+                    </tr>
+                    {{/each}}
+                </tbody>
+            </table>
+        </div>
+        {{/if}}
+
+        <!-- Button to visit the site -->
+        <div class="button-container">
+            <a href="{{siteUrl}}" class="button">Visit Our Website</a>
+        </div>
+
+        <p class="footer">Best regards,<br>The Insurance Team</p>
+    </div>
+</body>
+
+</html>

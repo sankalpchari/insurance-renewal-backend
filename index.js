@@ -5,12 +5,13 @@ import express from "express";
 import cors from "cors";
 import "./models/initalizeModels.js";
 import path from "path"
-import { authRouter, doctorRoutes, insuranceRouter, InsuranceReceipientRouter, userRoutes, dashboardStats} from "./routes/routes.js"
+import { authRouter, doctorRoutes, insuranceRouter, InsuranceReceipientRouter, userRoutes, dashboardStats, settingsRouter} from "./routes/routes.js"
 import { fileURLToPath } from 'url';
 import "./services/email.service.js";
 import rateLimit from 'express-rate-limit';
 import {encryptionMiddleware} from "./middleware/encrypt.middleware.js";
 import { decryptData } from "./config/dataEncryption.js";
+import { startCron } from "./cron/cronjob.js"; 
 
 const app = express();
 const __filename = fileURLToPath(import.meta.url);
@@ -59,12 +60,17 @@ app.use(`${process.env.URL_PREFIX}/insurance`,insuranceRouter);
 app.use(`${process.env.URL_PREFIX}/insurance-receipient`, InsuranceReceipientRouter);
 app.use(`${process.env.URL_PREFIX}/users`, userRoutes)
 app.use(`${process.env.URL_PREFIX}/dashboard`, dashboardStats)
+app.use(`${process.env.URL_PREFIX}/settings`, settingsRouter)
 // future use
 
 // app.use(`${process.env.URL_PREFIX}/auth`,authRouter)
 
 //==================== app.use ends ==============================
 
+
+// cron jobs 
+
+//startCron();
 
 app.listen(process.env.PORT, ()=>{
     console.log(`app running on port ${process.env.PORT}`)

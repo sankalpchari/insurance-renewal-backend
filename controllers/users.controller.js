@@ -5,7 +5,7 @@ import bcrypt from 'bcrypt';
 import { logActivity } from "../utils/logger.js";
 import {sendMailgunEmail, createEmailBody} from "../services/email.service.js";
 import handlebars from "handlebars";
-import crypto from "crypto"
+import crypto from "crypto";
 
 export const getUserDetails = async (req, res) => {
     try {
@@ -141,25 +141,59 @@ export const getUsersList = async (req, res) => {
     }
 };
 
+
 export const updateUserPassword = async (req, res) => {
     try {
-        const { old_password, new_password } = req.body;
+        const { old_password, new_password, confirm_password } = req.body;
         const { userId } = req.user;
+
+        // Validate input fields
+        if (!old_password || !new_password || !confirm_password) {
+            return res.status(400).json({
+                message: "All password fields are required.",
+                success: false
+            });
+        }
+
+        if (new_password !== confirm_password) {
+            return res.status(400).json({
+                message: "New password and confirm password must match.",
+                success: false
+            });
+        }
+
+        // Password complexity check (min 8 chars, 1 number, 1 special char)
+        const passwordRegex = /^(?=.*[0-9])(?=.*[!@#$%^&*])[A-Za-z\d!@#$%^&*]{8,}$/;
+        if (!passwordRegex.test(new_password)) {
+            return res.status(400).json({
+                message: "Password must be at least 8 characters long and include at least one number and one special character.",
+                success: false
+            });
+        }
 
         // Find user by ID
         const user = await User.findOne({ where: { ID: userId } });
         if (!user) {
             return res.status(404).json({
-                message: "User not found",
+                message: "User not found.",
                 success: false
             });
         }
 
-        // Check if the old password matches
+        // Check if the old password is correct
         const isMatch = await bcrypt.compare(old_password, user.password);
         if (!isMatch) {
             return res.status(400).json({
-                message: "Incorrect old password",
+                message: "Incorrect old password.",
+                success: false
+            });
+        }
+
+        // Ensure new password is different from the old password
+        const isSamePassword = await bcrypt.compare(new_password, user.password);
+        if (isSamePassword) {
+            return res.status(400).json({
+                message: "New password must be different from the old password.",
                 success: false
             });
         }
@@ -173,27 +207,27 @@ export const updateUserPassword = async (req, res) => {
             { where: { ID: userId } }
         );
 
-        // Log password update
+        // Log password update (without storing passwords in logs)
         await logActivity(
             userId,
             "Updated Password",
             "User",
             userId,
-            { password: user.password }, // Old hashed password
-            { password: hashedPassword }, // New hashed password
+            null, // Do not log old password
+            null, // Do not log new password
             req.ip,
             req.headers['user-agent']
         );
 
         return res.status(200).json({
-            message: "Password updated successfully",
+            message: "Password updated successfully.",
             success: true
         });
 
-    } catch (e) {
-        console.log(e);
+    } catch (error) {
+        console.error("Error updating password:", error);
         return res.status(500).json({
-            message: "An error occurred while updating the password",
+            message: "An error occurred while updating the password.",
             success: false
         });
     }

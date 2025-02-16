@@ -5,6 +5,7 @@ import insuranceRouter from "./insurance.routes.js";
 import InsuranceReceipientRouter from "./InsuranceReceipient.routes.js";
 import userRoutes from "./users.routes.js";
 import dashboardStats from "./dashboard.routes.js";
+import settingsRouter from "./settings.routes.js";
 
 
 export {
@@ -13,5 +14,6 @@ export {
     insuranceRouter,
     InsuranceReceipientRouter,
     userRoutes,
-    dashboardStats
+    dashboardStats,
+    settingsRouter
 }

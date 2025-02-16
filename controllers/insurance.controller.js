@@ -32,8 +32,6 @@ export const getInsuranceDetails = async (req, res) => {
             dueIn
         } = req.query;
 
-        console.log(dueIn, "dueIn");
-
         let whereData = { where: {} };
         let order = [];
         let attributes = [];
@@ -60,10 +58,6 @@ export const getInsuranceDetails = async (req, res) => {
                         dateCondition = new Date();
                         dateCondition.setMonth(currentDate.getMonth() + value);
                         break;
-                    case "y": // Years
-                        dateCondition = new Date();
-                        dateCondition.setFullYear(currentDate.getFullYear() + value);
-                        break;
                     default:
                         dateCondition = null;
                 }
@@ -82,9 +76,12 @@ export const getInsuranceDetails = async (req, res) => {
 
         // Other filters
         if (is_default) whereData.where.is_default = is_default;
-        if (is_active) whereData.where.is_active = { [sequelize.Op.eq]: is_active };
+        // if (is_active) 
+        whereData.where.is_active = { [sequelize.Op.eq]: 1 };
         if (is_email_sent) whereData.where.is_email_sent = { [sequelize.Op.eq]: is_email_sent };
         if (is_draft) whereData.where.is_draft = { [sequelize.Op.eq]: is_draft };
+
+
 
         if (searchTerm) {
             whereData.where[sequelize.Op.or] = [
@@ -110,6 +107,9 @@ export const getInsuranceDetails = async (req, res) => {
             case "recent":
                 attributes.push([sequelize.literal('DATEDIFF(NOW(), from_service_date)'), 'daysSinceRenewal']);
                 order.push([sequelize.literal('DATEDIFF(NOW(), from_service_date)'), 'ASC']);
+                break;
+            case "expired":
+                whereData.where.to_service_date = { [sequelize.Op.lt]: currentDate }; // Expired
                 break;
             default:
                 // No special filtering
@@ -293,10 +293,6 @@ export const updateInsuranceDetails = async (req, res) => {
             recipient_ma
         } = req.body;
 
-        console.log(recipient_ma);
-        console.log(req.body)
-
-
         const {id} = req.params; 
 
         // Check for existing insurance details for this recipient with overlapping dates
@@ -379,7 +375,6 @@ export const generatePdf = async(req, res)=>{
         insuranceDetails = await insuranceDetails?.toJSON(); 
 
         if(insuranceDetails){
-            console.log(insuranceDetails.pdf_location);
             const dateNow = Date.now();
             const pdfName = `${insuranceDetails.InsuranceReceipient.name}-${insuranceDetails.InsuranceReceipient.recipient_ma}-${dateNow}.pdf`
              const pdf =  await generatePDF(pdfName,insuranceDetails);
@@ -416,7 +411,6 @@ export const generatePdf = async(req, res)=>{
 
 export const downloadPDF =  async(req, res)=>{
     try{
-        console.log("download PDF fn called");
         const {id} = req.params;
 
         let insuranceDetails = await InsuranceDetails.findOne({
@@ -608,8 +602,6 @@ export const getRenewalData = async (req, res) => {
                         raw: true,
                       });
 
-                      console.log(insuranceDetails);
-                      
                       return res.status(200).json({
                         message: "",
                         success: true,
@@ -670,8 +662,6 @@ export const addInsuranceProvider = async(req, res, next)=>{
 
         if(is_default && is_default.toLowerCase() === "true"){
              // default value set
-             console.log(is_default,"is_default")
-             console.log("is default set");
              await InsuranceProvider.update(
                 { is_default: false },
                 { where: {} }
@@ -691,10 +681,9 @@ export const addInsuranceProvider = async(req, res, next)=>{
         });
 
         // Respond with success message
-        res.status(201).json({ message: 'Insurance Provider added successfully', data: newProvider });
+        return res.status(201).json({ message: 'Insurance Provider added successfully', data: newProvider });
     } catch (error) {
-        console.log("error")
-        res.status(500).json({ message: 'Error adding provider', error: error.message });
+      return res.status(500).json({ message: 'Error adding provider', error: error.message });
     }  
 }
 
@@ -720,7 +709,7 @@ export const insuranceProvider = async (req, res) => {
 
         const offset = (Number(page) - 1) * Number(pageSize);
         const limit = Number(pageSize);
-        console.log(whereData);
+
         const { count, rows } = await InsuranceProvider.findAndCountAll({
             where: whereData,
             attributes: [
@@ -820,8 +809,7 @@ export const singleInsuranceDetails = async(req, res)=>{
     try{
 
         const { id } =  req.params
-        console.log(id,"id");
-    
+
         const insuranceProvider = await InsuranceDetails.findOne({
             include: [
                 {
@@ -895,7 +883,6 @@ export const renewInsurance = async(req, res)=>{
                  
                     if(insurance){
                         const { from_service_date, plan_of_care, to_service_date } = req.body;
-                        console.log(insurance,"insurance")
                         await InsuranceDetails.update(
                             { is_active: 0 },
                             { where: { recipient_id: insurance.recipient_id } }
@@ -987,7 +974,6 @@ export const updateStatusInDB = async(req, res)=>{
         const { ids } = req.body;
         const {user, combinedPdfPath, emailResp} = req;
         const {userId } = user;
-        console.log(user);
 
         await InsuranceDetails.update(
             { is_email_sent: 1 },
@@ -1033,15 +1019,12 @@ export const singleInsuranceProvider = async(req, res)=>{
     try{
 
         const { id } =  req.params
-        console.log(id,"id");
     
         const insuranceProvider = await InsuranceProvider.findOne({
             where:{
                 ID:id
             }
         });
-
-        console.log(insuranceProvider);
 
         if(Object.keys(insuranceProvider).length){
            return res.status(200).json({ message: 'Insurance Provider added successfully', data: insuranceProvider, success:true });
@@ -1075,8 +1058,6 @@ export const updateProvider = async (req, res) => {
 
         if(is_default){
             // default value set
-            console.log(is_default,"is_default")
-            console.log("is default set");
             await InsuranceProvider.update(
                { is_default: false },
                { where: {} }
