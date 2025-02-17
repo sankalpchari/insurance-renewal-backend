@@ -5,12 +5,14 @@ getSettings,
 updateSettings
 } from "../controllers/settings.controller.js";
 
+import { checkPermission } from "../middleware/common.middleware.js";
+
 
 const settingsRouter  = express.Router();
 
 
-settingsRouter.get("/", auth, getSettings);
-settingsRouter.post("/", auth,updateSettings);
+settingsRouter.get("/", auth,checkPermission, getSettings);
+settingsRouter.post("/", auth,checkPermission, updateSettings);
 
 
 

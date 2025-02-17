@@ -14,6 +14,7 @@ const auth = (req, res, next) => {
             return res.status(403).json({ message: 'Token is not valid. Access denied.' });
         }
         req.user = decoded; // Attach the decoded user info to the request
+        console.log(decoded,"decoded");
         next(); // Proceed to the next middleware or route handler
     });
 };
