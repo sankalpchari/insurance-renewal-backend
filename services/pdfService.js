@@ -50,8 +50,8 @@ export async function generatePDF(outputFile, data) {
     provider_number: data.InsuranceProvider.provider_code,
     recipient_name:data.InsuranceReceipient.name,
     recipient_ma_number:data.InsuranceReceipient.recipient_ma,
-    doctor_name:data.DoctorDetail.doctor_name,
-    doctor_phone_number:data.DoctorDetail.doctor_phone_no,
+    doctor_name:data.InsuranceReceipient.Doctor.doctor_name,
+    doctor_phone_number:data.InsuranceReceipient.Doctor.doctor_phone_no,
     prsrp_prov_number:data.prsrb_prov,
     from_date: data.from_service_date,
     to_date: data.to_service_date,
@@ -77,6 +77,8 @@ export async function generatePDF(outputFile, data) {
     rsn: data.rsn,
     pa_number: data.comment_pa,
   }
+
+  console.log(settings);
 
   
   const html = compiledTemplate(settings);

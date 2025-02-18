@@ -301,6 +301,7 @@ export const simpleRenewalSchema = Joi.object({
     .messages({
       'string.base': '"Plan of Care" must be a string',
       'any.required': '"Plan of Care" is required'
-    })
+    }),
+  send_email:Joi.number().optional()
 });
   

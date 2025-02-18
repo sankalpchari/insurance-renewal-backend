@@ -883,7 +883,9 @@ export const renewInsurance = async(req, res)=>{
             case "simple":
                  
                     if(insurance){
-                        const { from_service_date, plan_of_care, to_service_date } = req.body;
+                        const { from_service_date, plan_of_care, to_service_date, send_email = 0 } = req.body;
+
+                        console.log("req.body", req.body)
                         await InsuranceDetails.update(
                             { is_active: 0 },
                             { where: { recipient_id: insurance.recipient_id } }
@@ -899,6 +901,48 @@ export const renewInsurance = async(req, res)=>{
                             pdf_location:"",
                             is_active : 1
                         });
+
+                        const newInsuranceId = newInsurance.ID;
+                        if(send_email && newInsuranceId){
+                            //generate PDF and send email to provider 
+
+                            let insuranceDetails = await InsuranceDetails.findOne({
+                                include: [
+                                    { model: InsuranceProvider, as: 'InsuranceProvider', required: true },
+                                    {  model: InsuranceReceipient,  as: 'InsuranceReceipient',  required: true,
+                                    include: [{ model: DoctorDetails, as: 'Doctor', required: true }]}
+                                ],
+                                attributes: {
+                                    include: [ 
+                                        [sequelize.fn('DATE_FORMAT', sequelize.col('from_service_date'), '%Y-%m-%d'), 'from_service_date'], 
+                                        [sequelize.fn('DATE_FORMAT', sequelize.col('to_service_date'), '%Y-%m-%d'), 'to_service_date']
+                                    ]
+                                },
+                                where: { ID: newInsuranceId }
+                            });
+
+                            insuranceDetails = await insuranceDetails?.toJSON(); 
+                            if(insuranceDetails){
+                                const dateNow = Date.now();
+                                const pdfName = `${insuranceDetails.InsuranceReceipient.name}-${insuranceDetails.InsuranceReceipient.recipient_ma}-${dateNow}.pdf`
+                                 const pdf =  await generatePDF(pdfName,insuranceDetails);
+                                if(pdf){
+                                    if(insuranceDetails.pdf_location && insuranceDetails.pdf_location?.length){
+                                        await deleteFile(insuranceDetails.pdf_location);
+                                    }
+                                    await InsuranceDetails.update(
+                                        { pdf_location: pdf },
+                                        {
+                                            where: {
+                                                ID:id
+                                            },
+                                        }
+                                    );
+                                };
+                                return res.status(200).json({"message":"PDF generated successfully", success:true, pdfLocation : pdf});
+                            }
+                        }
+
                         return res.status(200).json({ message: 'Insurance renewed successfully for the customer', success:true}); 
                     }else{
                         return res.status(404).json({ message: 'Cannot find the insurance', success:false});
