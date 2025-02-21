@@ -361,8 +361,19 @@ export const generatePdf = async(req, res)=>{
         var insuranceDetails = await InsuranceDetails.findOne({
             include: [
                 {  model: InsuranceProvider,  as: 'InsuranceProvider',  required: true },
-                { model: DoctorDetails, as: 'DoctorDetail', required: true},
-                { model: InsuranceReceipient , as: 'InsuranceReceipient', required: true}
+                { model: InsuranceReceipient , 
+                    as: 'InsuranceReceipient', 
+                    required: true,
+                    include: [
+                        {
+                            model: DoctorDetails,
+                            as: 'Doctor', 
+                            attributes: ["doctor_name", "doctor_phone_no"], 
+                            required: false
+                        }
+                    ]
+
+                }
             ],
             attributes: {
                 include: [ 
@@ -373,6 +384,7 @@ export const generatePdf = async(req, res)=>{
         });
 
         insuranceDetails = await insuranceDetails?.toJSON(); 
+        console.log(insuranceDetails, "generate PDF");
 
         if(insuranceDetails){
             const dateNow = Date.now();
@@ -416,8 +428,19 @@ export const downloadPDF =  async(req, res)=>{
         let insuranceDetails = await InsuranceDetails.findOne({
             include: [
                 {  model: InsuranceProvider,  as: 'InsuranceProvider',  required: true },
-                { model: DoctorDetails, as: 'DoctorDetail', required: true},
-                { model: InsuranceReceipient , as: 'InsuranceReceipient', required: true}
+                { model: InsuranceReceipient , 
+                    as: 'InsuranceReceipient', 
+                    required: true,
+                    include: [
+                        {
+                            model: DoctorDetails,  // Add the Doctor model here
+                            as: 'Doctor',   // Use the appropriate alias as defined in your associations
+                            attributes: ["doctor_name", "doctor_phone_no"], // Add whatever doctor attributes you need
+                            required: false // Change to true if you want inner join
+                        }
+                    ]
+
+                }
             ],
             attributes: {
                 include: [ 
@@ -431,6 +454,12 @@ export const downloadPDF =  async(req, res)=>{
         });
 
         insuranceDetails = await insuranceDetails.toJSON(); 
+
+        insuranceDetails['doctor_name'] = insuranceDetails['InsuranceReceipient.Doctor.doctor_name'];
+        insuranceDetails['doctor_number'] = insuranceDetails['InsuranceReceipient.Doctor.doctor_phone_no'];
+
+        console.log(insuranceDetails, "download PDF");
+
         let URL = ""
         if(insuranceDetails){
          
@@ -776,10 +805,10 @@ export const deleteInsurance = async (req, res) => {
         });
 
         if(insurance){
-            // if(insurance.is_active){
-            //     return res.status(200).json({ message: 'Cannot delete a active authorization' , success:false }); 
-            // }
-
+            console.log(insurance.is_active, "insurance.is_active");
+            if(insurance.is_active){
+                return res.status(400).json({ message: 'Cannot delete a active insurance' , success:false }); 
+            }
 
             if(insurance?.pdf_location){
                 await deleteFile(insurance.pdf_location);
@@ -885,7 +914,40 @@ export const renewInsurance = async(req, res)=>{
                     if(insurance){
                         const { from_service_date, plan_of_care, to_service_date, send_email = 0 } = req.body;
 
-                        console.log("req.body", req.body)
+                        console.log(from_service_date, plan_of_care, to_service_date);
+
+                        console.log(insurance);
+
+                        // Check for overlapping dates or future end date > 20 days
+                        const existingInsurance = await InsuranceDetails.findAll({
+                            where: {
+                                recipient_id: insurance.recipient_id,
+                                is_active: 1,
+                                [Op.or]: [
+                                    // Check for date overlap
+                                    {
+                                        from_service_date: {
+                                            [Op.lte]: to_service_date // Existing start date <= New end date
+                                        },
+                                        to_service_date: {
+                                            [Op.gte]: from_service_date // Existing end date >= New start date
+                                        }
+                                    },
+                                    // Check if existing to_service_date is > 20 days in future
+                                    literal('to_service_date > DATE_ADD(NOW(), INTERVAL 20 DAY)')
+                                ]
+                            },
+                            raw:true
+                        });
+
+
+                        if (existingInsurance.length > 0) {
+                            return res.status(409).json({
+                                message: 'Date range overlaps with an existing insurance record or existing end date is more than 20 days in the future',
+                                success: false
+                            });
+                        }
+
                         await InsuranceDetails.update(
                             { is_active: 0 },
                             { where: { recipient_id: insurance.recipient_id } }
