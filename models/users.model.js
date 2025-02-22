@@ -86,8 +86,7 @@ User.prototype.createJWT = function () {
         {
             userId: this.ID, // Use 'this.ID' for Sequelize model
             email: this.email,
-            role: this.role,
-            branch: this.branch,
+            role: this.role_id,
         },
         process.env.JWT_SECRET,
         {

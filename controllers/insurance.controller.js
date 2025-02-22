@@ -687,7 +687,7 @@ export const addInsuranceProvider = async(req, res, next)=>{
 
         // Check if file was uploaded
         const logoLocation = req.file ? `/uploads/${req.file.filename}` : null;
-        const path2 = logoLocation.replace(/\\/g, "/");
+        const path2 = logoLocation?.replace(/\\/g, "/") || "";
 
 
         if(is_default && is_default.toLowerCase() === "true"){
@@ -696,8 +696,28 @@ export const addInsuranceProvider = async(req, res, next)=>{
                 { is_default: false },
                 { where: {} }
             );
-            
         }
+
+        const results = await InsuranceProvider.findAll({
+            where: {
+                [Op.or]: [
+                    { provider_name: { [Op.like]: `%${provider_name}%` } },
+                    { provider_code: { [Op.like]: `%${provider_code}%` } },
+                    { provider_email: { [Op.like]: `%${provider_email}%` } }
+                ]
+            },
+            raw:true
+        });
+
+        
+
+        if(results.length){
+            return res.status(400).json({ 
+                message: 'Another Provider with same details already exist, Please check the Name, Provider Code, Provider Email.', 
+                success:false 
+            });
+        }
+
 
         // Save data to the database
         const newProvider = await InsuranceProvider.create({
@@ -713,6 +733,7 @@ export const addInsuranceProvider = async(req, res, next)=>{
         // Respond with success message
         return res.status(201).json({ message: 'Insurance Provider added successfully', data: newProvider });
     } catch (error) {
+        console.log(error);
       return res.status(500).json({ message: 'Error adding provider', error: error.message });
     }  
 }
@@ -721,7 +742,7 @@ export const addInsuranceProvider = async(req, res, next)=>{
 export const insuranceProvider = async (req, res) => {
     try {
         const { is_default, search, sortBy = 'date_created', sortOrder = 'DESC', page = 1, pageSize = 10 } = req.query;
-        
+        console.log(sortBy);
         const whereData = {};
         if (is_default) {
             whereData.is_default = Boolean(is_default) == true ? 1:0;
@@ -1171,6 +1192,28 @@ export const updateProvider = async (req, res) => {
            );
            
        }
+
+        const results = await InsuranceProvider.findAll({
+                    where: {
+                        [Op.or]: [
+                            { provider_name: { [Op.like]: `%${updateData.provider_name}%` } },
+                            { provider_code: { [Op.like]: `%${updateData.provider_code}%` } },
+                            { provider_email: { [Op.like]: `%${updateData.provider_email}%` } }
+                        ]
+                    },
+                    raw:true
+                });
+
+
+        if(results){
+            const ids = results.filter( res=> res.ID != id);
+            if(ids.length){
+                return res.status(400).json({ 
+                    message: 'Another Provider with same details already exist, Please check the Name, Provider Code, Provider Email.', 
+                    success:false 
+                });
+            }
+        }
 
         // Update the provider in the database
         const [updated] = await InsuranceProvider.update({...updateData, is_default}, {

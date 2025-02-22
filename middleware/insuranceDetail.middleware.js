@@ -14,7 +14,6 @@ import fs from 'fs';
 import path from 'path';
 
 export const validateProvider = (req, res, next) => {
-     console.log(req.body);
     const { error } = providerSchema.validate(req.body, { abortEarly: false });
     if (error) {
         const errorMessages = error.details.map(detail => detail.message);
@@ -36,12 +35,13 @@ export const validateInsuranceDetails = (req, res, next) => {
 
 export const checkAndCreateDoctor = async (req, res, next) => {
     try {
-        const { doctor_name, doctor_number } = req.body;
+        const { doctor_name = "", doctor_number = "" } = req.body;
         const { type } = req.params;
-
-        if(type && type == "simple"){
+ 
+        if(type && type == "simple" || (doctor_name == "" && doctor_number == "")){
            return next();
         }
+
 
         // Search for doctor by phone number
         let doctor = await DoctorDetails.findOne({
@@ -51,8 +51,6 @@ export const checkAndCreateDoctor = async (req, res, next) => {
         });
 
         if (doctor) {
-            // Doctor found, add doctor_id to req.body
-            console.log(doctor.ID)
             req.body.doctor_id = doctor.ID;
         } else {
             // No doctor found, create a new doctor

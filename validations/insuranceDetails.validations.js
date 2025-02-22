@@ -146,8 +146,9 @@ export const providerSchema = Joi.object({
         }),
 
     phone_no_2: Joi.string()
-        .pattern(/^\d{3}-\d{3}-\d{4}$/)
-        .optional()
+        .allow('', null)  // Allow empty or null values
+        .optional()       // Make it optional
+        .pattern(/^\d{3}-\d{3}-\d{4}$/)  // Only validate if it's present
         .messages({
             'string.pattern.base': 'Phone number 2 must be a valid phone number'
         }),

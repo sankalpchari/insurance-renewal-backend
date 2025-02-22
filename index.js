@@ -5,7 +5,7 @@ import express from "express";
 import cors from "cors";
 import "./models/initalizeModels.js";
 import path from "path"
-import { authRouter, doctorRoutes, insuranceRouter, InsuranceReceipientRouter, userRoutes, dashboardStats, settingsRouter} from "./routes/routes.js"
+import { authRouter, doctorRoutes, insuranceRouter, InsuranceRecipientRouter, userRoutes, dashboardStats, settingsRouter} from "./routes/routes.js"
 import { fileURLToPath } from 'url';
 import "./services/email.service.js";
 import rateLimit from 'express-rate-limit';
@@ -57,7 +57,7 @@ app.get(`/`, (req, res) => {
 app.use(`${process.env.URL_PREFIX}/auth`,authRouter);
 app.use(`${process.env.URL_PREFIX}/doctors`,doctorRoutes);
 app.use(`${process.env.URL_PREFIX}/insurance`,insuranceRouter);
-app.use(`${process.env.URL_PREFIX}/insurance-receipient`, InsuranceReceipientRouter);
+app.use(`${process.env.URL_PREFIX}/insurance-receipient`, InsuranceRecipientRouter);
 app.use(`${process.env.URL_PREFIX}/users`, userRoutes)
 app.use(`${process.env.URL_PREFIX}/dashboard`, dashboardStats)
 app.use(`${process.env.URL_PREFIX}/settings`, settingsRouter)

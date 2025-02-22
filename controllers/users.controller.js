@@ -67,79 +67,108 @@ export const getUserDetails = async (req, res) => {
 
 export const getUsersList = async (req, res) => {
     try {
-        const {
-            searchTerm = "",
-            dateCreated = "",
-            sort_by = "f_name",
-            sort_order = "asc",
-            records_per_page = 10,
-            page = 1
-        } = req.query;
-
-        const limit = parseInt(records_per_page);
-        const offset = (parseInt(page) - 1) * limit;
-
-        let whereClause = {};
-        
-        if (searchTerm) {
-            whereClause[Op.or] = [
-                { f_name: { [Op.like]: `%${searchTerm}%` } },
-                { email: { [Op.like]: `%${searchTerm}%` } }
-            ];
+      const { 
+        searchTerm = "", 
+        dateCreated = "", 
+        sortBy = "f_name", 
+        sortOrder = "asc", 
+        recordsPerPage = 10, 
+        page = 1 
+      } = req.query;
+      const { user } = req;
+      const { role } = user;
+  
+      // Get current user's role and role order
+      const userRoleDB = await Roles.findOne({ 
+        where: { ID: role }, 
+        raw: true 
+      });
+      const { sort_order: roleOrder } = userRoleDB;
+  
+      const limit = parseInt(recordsPerPage);
+      const offset = (parseInt(page) - 1) * limit;
+  
+      // Build the where clause
+      let whereClause = {
+        is_deleted: 0
+      };
+  
+      if (searchTerm) {
+        whereClause[Op.or] = [
+          { f_name: { [Op.like]: `%${searchTerm}%` } },
+          { email: { [Op.like]: `%${searchTerm}%` } },
+          { l_name: { [Op.like]: `%${searchTerm}%` } }
+        ];
+      }
+  
+      if (dateCreated) {
+        whereClause.createdAt = { [Op.gte]: new Date(dateCreated) };
+      }
+  
+      // Find all roles with order less than current user's role order
+      const eligibleRoles = await Roles.findAll({
+        attributes: ['ID'],
+        raw: true
+      });
+  
+      
+      let eligibleRoleIds = [] 
+      if(roleOrder == 1){
+        eligibleRoleIds = eligibleRoles.map(role => role.ID);
+      }else{
+        eligibleRoleIds = eligibleRoles.map(role => role.ID > roleOrder );
+      }
+    
+      
+      // Add role filter to where clause
+      whereClause['role_id'] = {
+        [Op.in]: eligibleRoleIds
+      };
+  
+      const { count: totalRecords, rows } = await User.findAndCountAll({
+        where: whereClause,
+        order: [[sortBy, sortOrder.toLowerCase() === "desc" ? "DESC" : "ASC"]],
+        limit,
+        offset,
+        attributes: [
+          "ID",
+          "f_name",
+          "l_name",
+          "email",
+          "role_id",
+          [fn("DATE", col("User.date_created")), "date_created"],
+          [fn("NOT", col("User.is_deleted")), "active"],
+          [col('Role.role_name'), 'role_name'],
+        ],
+        include: [{
+          model: Roles,
+          as: 'Role',
+          required: true,
+          attributes: ["role_name"]
+        }],
+        raw: true,
+      });
+  
+      return res.status(200).json({
+        message: "Users retrieved successfully",
+        success: true,
+        data: rows,
+        pagination: {
+          totalRecords,
+          totalPages: limit ? Math.ceil(totalRecords / limit) : 1,
+          currentPage: parseInt(page),
+          recordsPerPage: limit || totalRecords
         }
-
-        if (dateCreated) {
-            whereClause.createdAt = { [Op.gte]: new Date(dateCreated) };
-        }
-
-        whereClause.is_deleted = 0
-
-        const { count: totalRecords, rows } = await User.findAndCountAll({
-            where: whereClause,
-            order: [[sort_by, sort_order.toLowerCase() === "desc" ? "DESC" : "ASC"]],
-            limit,
-            offset,
-            attributes: [
-                "ID",
-                "f_name",
-                "l_name",
-                "email",
-                "role_id",
-                [fn("DATE", col("User.date_created")), "date_created"],
-                [fn("NOT", col("User.is_deleted")), "active"],
-                [col('Role.role_name'), 'role_name'],
-               
-            ],
-            include: [
-                {
-                    model: Roles,
-                    as: 'Role',
-                    required: true,
-                    attributes:["role_name"]
-                }
-            ],
-            raw:true,
-        });
-
-        return res.status(200).json({
-            message: "Users retrieved successfully",
-            success: true,
-            data: rows,
-            pagination: {
-                totalRecords,
-                totalPages: limit ? Math.ceil(totalRecords / limit) : 1,
-                currentPage: parseInt(page),
-                recordsPerPage: limit || totalRecords
-            }
-        });
+      });
+  
     } catch (e) {
-        console.error(e);
-        return res.status(500).json({
-            message: "An error occurred while getting the user list",
-            success: false
-        });
+      console.error(e);
+      return res.status(500).json({
+        message: "An error occurred while getting the user list",
+        success: false
+      });
     }
-};
+  };
 
 
 export const updateUserPassword = async (req, res) => {

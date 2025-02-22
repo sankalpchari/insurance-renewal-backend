@@ -121,9 +121,9 @@ export const getSingleInsuranceRecipient = async (req, res) => {
 
 // Create insurance recipient
 export const createInsuranceRecipient = async (req, res) => {
-    const { name, recipient_ma, doctor_id, prsrb_prov, recipient_type, dob } = req.body;
+    const { name, recipient_ma, doctor_id = "", prsrb_prov, recipient_type, dob } = req.body;
 
-    if (!name || !recipient_ma || !doctor_id || !prsrb_prov || !recipient_type || !dob) {
+    if (!name || !recipient_ma || !prsrb_prov || !recipient_type || !dob) {
         return res.status(400).json({ message: "All fields are required" });
     }
 
@@ -142,7 +142,7 @@ export const createInsuranceRecipient = async (req, res) => {
 // Update insurance recipient
 export const updateInsuranceReceipient = async (req, res) => {
     const { id } = req.params;
-    const { name, recipient_ma, doctor_id, prsrb_prov, recipient_type, dob } = req.body;
+    const { name, recipient_ma, doctor_id = "", prsrb_prov, recipient_type, dob } = req.body;
 
     try {
         const recipient = await InsuranceReceipient.findOne({ where: { ID: id, is_deleted: false } });

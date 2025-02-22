@@ -18,6 +18,7 @@ export const encryptData = (data) => {
 export const decryptData = (req, res, next) => {
     try {
       if (req.is("multipart/form-data")) {
+        console.log("is multipart form data")
         if (!req.body) {
           return res.status(400).json({ error: "No form data received" });
         }
@@ -25,6 +26,9 @@ export const decryptData = (req, res, next) => {
         // Decrypt text fields while keeping files intact
         for (const key in req.body) {
           try {
+
+            console.log(key, "key");
+
             const encryptedValue = req.body[key];
   
             if (typeof encryptedValue !== "string") continue;
@@ -43,7 +47,6 @@ export const decryptData = (req, res, next) => {
             return res.status(400).json({ error: `Failed to decrypt field: ${key}` });
           }
         }
-  
         return next();
       }
   

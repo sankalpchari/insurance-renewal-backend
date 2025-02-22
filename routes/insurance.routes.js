@@ -52,16 +52,23 @@ insuranceRouter.get("/download-pdf/:id", auth, checkPermission, downloadPDF);
 insuranceRouter.get("/provider", auth, checkPermission, insuranceProvider); 
 insuranceRouter.get("/provider/:id", auth, checkPermission, singleInsuranceProvider); 
 
-insuranceRouter.post("/provider", 
-    auth, 
+insuranceRouter.post("/provider", auth, 
     checkPermission,
     upload.single("logo"),
     handleUploadError,
+    decryptData,
     validateProvider, 
     addInsuranceProvider
 );
 
-insuranceRouter.patch("/provider/:id", auth, checkPermission, upload.single("logo"), handleUploadError, decryptData, validateProvider,  updateProvider); 
+insuranceRouter.patch("/provider/:id", auth, 
+    checkPermission, 
+    upload.single("logo"), 
+    handleUploadError, 
+    decryptData, 
+    validateProvider,  
+    updateProvider
+); 
 insuranceRouter.delete("/provider/:id", auth, checkPermission, deleteProvider); 
 
 export default insuranceRouter;

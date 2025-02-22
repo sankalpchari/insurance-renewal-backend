@@ -1,5 +1,6 @@
 import DoctorDetails from "../models/doctors.model.js";
-import sequelize from "sequelize";
+import InsuranceReceipient from "../models/InsuranceReceipient.model.js";
+import sequelize, { where } from "sequelize";
 import { logActivity } from "../utils/logger.js";
 
 const getDoctors = async (req, res, next) => {
@@ -231,10 +232,42 @@ const deleteDoctors = async (req, res, next) => {
     }
 };
 
+const getLinkedPatients = async(req, res, next)=>{
+    try{
+        const {doctor_id=""} = req.params;
+
+        if(doctor_id){
+            const linkedPatient = await InsuranceReceipient.findAll({
+                where:{
+                    doctor_id
+                }
+            })
+
+            return res.status(200).json({
+                message: "Doctor found",
+                success: true,
+                data:linkedPatient
+            });
+
+        }else{
+            return res.status(400).json({
+                message: "Doctor not found",
+                success: false,
+            });
+        }
+    }catch(e){
+        return res.status(500).json({
+            message: "Failed to get linked patients",
+            success: false,
+        });
+    }
+}
+
 export {
     getDoctors,
     createDoctors,
     updateDoctors,
     getOneDoctor,
-    deleteDoctors
+    deleteDoctors,
+    getLinkedPatients
 };

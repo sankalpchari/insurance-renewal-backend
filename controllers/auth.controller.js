@@ -8,22 +8,23 @@ const loginUser = async (req, res) => {
     const { email, password } = req.body;
     try {
         const user = await User.findOne({ where: { email } });
-
+        console.log(user, "user1");
         if (!user) {
             return res.status(401).json({ message: 'Invalid email or password.' });
         }
-
+        console.log(user, "user2");
         if(user.is_deleted == 1){
             return res.status(401).json({ message: 'Your account is no longer active, please contact admin.' });
         }
-
+        console.log(user, "user3");
         const isMatch = await user.comparePassword(password);
         if (!isMatch) {
+            console.log("password does not match")
             return res.status(401).json({ message: 'Invalid email or password.' });
         }
 
         const token = user.createJWT();
-
+        console.log(user, "user4");
         // Log user login activity
         await logActivity(
             user.ID,
