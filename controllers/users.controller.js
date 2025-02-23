@@ -440,7 +440,7 @@ export const createUser = async (req, res) => {
             is_deleted: 0
         });
 
-        await logActivity(req.user?.id, "create", "users", newUser.id, null, { f_name, l_name, email, role_id }, req.ip, req.headers["user-agent"]);
+        await logActivity(req.user?.ID, "create", "users", newUser.ID, null, { f_name, l_name, email, role_id }, req.ip, req.headers["user-agent"]);
 
 
         const emailBody = createEmailBody("accountCreation", {
