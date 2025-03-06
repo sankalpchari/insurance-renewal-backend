@@ -7,11 +7,13 @@ import sequelize,{ fn, col, where, json , Op, literal} from "sequelize";
 import { raw } from "mysql2";
 import { generatePDF , deleteFile} from "../services/pdfService.js";
 import EmailStatus from "../models/emailStatus.model.js";
+import { sendMailgunEmail , createEmailBody} from "../services/email.service.js";
 import {getRecordType} from "../utils/helpers.js";
+import Settings from "../models/setting.model.js";
+import path from "path";
 import fs from "fs"
 
 const rootPath = process.cwd();
-
 
 export const getInsuranceDetails = async (req, res) => {
     try {
@@ -926,7 +928,10 @@ export const renewInsurance = async(req, res)=>{
                 ID:id
             },
             raw:true
-        })   
+        })  
+        
+        console.log(type, id); 
+        console.log("type, id");
         
 
         switch(type){
@@ -934,11 +939,7 @@ export const renewInsurance = async(req, res)=>{
                  
                     if(insurance){
                         const { from_service_date, plan_of_care, to_service_date, send_email = 0 } = req.body;
-
-                        console.log(from_service_date, plan_of_care, to_service_date);
-
-                        console.log(insurance);
-
+                        console.log( req.body, " req.body")
                         // Check for overlapping dates or future end date > 20 days
                         const existingInsurance = await InsuranceDetails.findAll({
                             where: {
@@ -961,13 +962,15 @@ export const renewInsurance = async(req, res)=>{
                             raw:true
                         });
 
+                        // console.log(existingInsurance, "existingInsurance");
+                        // if (existingInsurance.length > 0) {
+                        //     return res.status(409).json({
+                        //         message: 'Cannot update as the insurance is still active and existing end date is more than 20 days in the future',
+                        //         success: false
+                        //     });
+                        // }
 
-                        if (existingInsurance.length > 0) {
-                            return res.status(409).json({
-                                message: 'Date range overlaps with an existing insurance record or existing end date is more than 20 days in the future',
-                                success: false
-                            });
-                        }
+                        console.log(existingInsurance, "existingInsurance")
 
                         await InsuranceDetails.update(
                             { is_active: 0 },
@@ -987,13 +990,41 @@ export const renewInsurance = async(req, res)=>{
 
                         const newInsuranceId = newInsurance.ID;
                         if(send_email && newInsuranceId){
+
+                            console.log("<============================================>")
+
                             //generate PDF and send email to provider 
+                            const insuranceProvider = await InsuranceProvider.findOne({
+                                where:{
+                                    is_default : 1
+                                },
+                                raw:true
+                            });
+
+                            console.log(newInsuranceId);
 
                             let insuranceDetails = await InsuranceDetails.findOne({
                                 include: [
-                                    { model: InsuranceProvider, as: 'InsuranceProvider', required: true },
-                                    {  model: InsuranceReceipient,  as: 'InsuranceReceipient',  required: true,
-                                    include: [{ model: DoctorDetails, as: 'Doctor', required: true }]}
+                                    {
+                                        model: InsuranceProvider,
+                                        as: 'InsuranceProvider',
+                                        attributes: ['provider_name'],
+                                        required: true
+                                    },
+                                    { 
+                                        model: InsuranceReceipient, 
+                                        as: 'InsuranceReceipient', 
+                                        required: true,
+                                        // attributes: ["name", "recipient_ma","dob"],
+                                        include: [
+                                            {
+                                                model: DoctorDetails,  // Add the Doctor model here
+                                                as: 'Doctor',   // Use the appropriate alias as defined in your associations
+                                                //attributes: ["doctor_name", "doctor_phone_no"], // Add whatever doctor attributes you need
+                                                required: false // Change to true if you want inner join
+                                            }
+                                        ]
+                                    }
                                 ],
                                 attributes: {
                                     include: [ 
@@ -1001,15 +1032,18 @@ export const renewInsurance = async(req, res)=>{
                                         [sequelize.fn('DATE_FORMAT', sequelize.col('to_service_date'), '%Y-%m-%d'), 'to_service_date']
                                     ]
                                 },
+                                //raw :true,
                                 where: { ID: newInsuranceId }
                             });
 
                             insuranceDetails = await insuranceDetails?.toJSON(); 
                             if(insuranceDetails){
+                                console.log(">>========================================")
                                 const dateNow = Date.now();
                                 const pdfName = `${insuranceDetails.InsuranceReceipient.name}-${insuranceDetails.InsuranceReceipient.recipient_ma}-${dateNow}.pdf`
-                                 const pdf =  await generatePDF(pdfName,insuranceDetails);
+                                const pdf =  await generatePDF(pdfName,insuranceDetails);
                                 if(pdf){
+                                    console.log(pdf, "pdf")
                                     if(insuranceDetails.pdf_location && insuranceDetails.pdf_location?.length){
                                         await deleteFile(insuranceDetails.pdf_location);
                                     }
@@ -1017,15 +1051,43 @@ export const renewInsurance = async(req, res)=>{
                                         { pdf_location: pdf },
                                         {
                                             where: {
-                                                ID:id
+                                                ID:newInsuranceId
                                             },
                                         }
                                     );
+
+                                    const emailBody = createEmailBody("notifyInsuranceProvider", {});
+                                    const emailOptions = {
+                                        html: emailBody,
+                                        attachments: [
+                                          {
+                                            filename: path.basename(pdf),
+                                            path: pdf
+                                          }
+                                        ]
+                                      };
+                                    const settings = await Settings.findAll({
+                                        raw:true
+                                    });
+
+                                    console.log(settings, "settings");
+
+                                    for(const setting of settings){
+                                       if(setting["key"] == "email_sender") emailOptions["to"] = setting["value"];
+                                       if(setting["key"] == "email_subject") emailOptions["subject"] = setting["value"];
+                                    }
+
+
+                                    // Define email options
+
+                                    console.log(emailOptions, "emailOptions")
+                                    // Send the email
+                                    const response = await sendMailgunEmail(emailOptions);
+                                    console.log(response)
+                                    return res.status(200).json({ message: 'Insurance renewed successfully for the customer and email has been sent', success:true}); 
                                 };
-                                return res.status(200).json({"message":"PDF generated successfully", success:true, pdfLocation : pdf});
                             }
                         }
-
                         return res.status(200).json({ message: 'Insurance renewed successfully for the customer', success:true}); 
                     }else{
                         return res.status(404).json({ message: 'Cannot find the insurance', success:false});

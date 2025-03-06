@@ -8,29 +8,20 @@ import sequelize,{ Op, literal, col, where } from 'sequelize';
 import {createEmailBody, sendMailgunEmail} from "../services/email.service.js";
 import Settings from "../models/setting.model.js";
 import { raw } from "mysql2";
+import User from "../models/users.model.js";
 
 export function startCron(){
     cron.schedule('* * * * *', async() => {
         try{
-
-            const settings = {}
-
-            const emailSettings = await Settings.findAll({
-                where: {
-                    key: {
-                        [Op.or]: ["email_sender", "email_subject"]
-                    }
-                },
-                raw:true
+            let users = await User.findAll({
+                attributes:['email'],
+                where:{
+                    is_deleted:0
+                }, 
+                raw :true
             });
 
-            for(const setting of emailSettings){
-                settings[setting.key] = setting.value
-            }
-            
-
-            console.log(emailSettings, settings);
-
+            users = users.map(usr=>usr.email);
             const renewals = await InsuranceDetails.findAll({
                 where: {
                     is_active: 1,
@@ -55,7 +46,7 @@ export function startCron(){
                 order: [[literal('DATEDIFF(to_service_date, NOW())'), 'ASC']], // Sort by soonest expiry
                 raw: true,
             });
-            
+
             const categorizedRenewals = {
                 overdue: renewals.filter(r => r.daysUntilExpiry < 0),
                 dueIn5Days: renewals.filter(r => r.daysUntilExpiry >= 0 && r.daysUntilExpiry <= 5),
@@ -64,17 +55,28 @@ export function startCron(){
             };
 
 
+            let total = 0
+            for(const key in categorizedRenewals){
+                total += categorizedRenewals[key].length
+            }
+ 
+
             categorizedRenewals["siteUrl"] = process.env.FE_URL;
+            categorizedRenewals["total"] = total
 
             const body = await createEmailBody("insuranceStats",categorizedRenewals);
 
+            const usersList = users?.join(",") || process.env.DEFAULT_EMAIL; 
+            const date = new Date().toISOString().split("T")[0];
+            const subject = "Authorization Renewal Report for :"+ date
 
             await sendMailgunEmail({
-                to: settings["email_sender"],
-                subject: settings["email_subject"],
+                to: usersList,
+                subject: subject,
                 html: body
-            })
+            });
 
+            console.log("Daily email sent to user");
 
         }catch(e){
             console.log(e);

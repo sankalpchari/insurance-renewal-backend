@@ -9,7 +9,7 @@ export async function generatePDF(outputFile, data) {
   try {
     const rootPath = process.cwd();
   
-    const templatePath = path.resolve(path.join(rootPath,'templates','inurancedetails.template.html'));
+    const templatePath = path.resolve(path.join(rootPath,'templates',"pdf",'inurancedetails.template.html'));
     const templateHTML = fs.readFileSync(templatePath, 'utf8'); 
     const outputPath =  path.resolve(path.join(rootPath, "assets", "pdf", outputFile));
     let phoneNoString = "";
@@ -34,7 +34,7 @@ export async function generatePDF(outputFile, data) {
 
     if(data.InsuranceProvider?.phone_no_2){
       if(phoneNoString.length){
-          phoneNoString = phoneNoString + " or " +data.InsuranceProvider.phone_no_2;
+          phoneNoString = phoneNoString + " OR " +data.InsuranceProvider.phone_no_2;
       }else{
           phoneNoString = data.InsuranceProvider.phone_no_2;
       }
@@ -78,16 +78,11 @@ export async function generatePDF(outputFile, data) {
     pa_number: data.comment_pa,
   }
 
-  console.log(settings);
-
-  
   const html = compiledTemplate(settings);
     const browser = await puppeteer.launch({
       args: ['--no-sandbox', '--disable-setuid-sandbox'],
     });
-    console.log("here 1");
     const page = await browser.newPage();
-    console.log("here 2");
     // Set content and generate PDF
     await page.setContent(html, { waitUntil: 'networkidle0' });
     await page.pdf({ 
@@ -98,14 +93,11 @@ export async function generatePDF(outputFile, data) {
     await browser.close();
     console.log(`PDF generated successfully at ${outputPath}`);
     return path.join("assets", "pdf", outputFile);
-
-
   } catch (error) {
     console.error('PDF generation error:', error);
     return false;
   }
 }
-
 
 export const generateBulkPDF = async (req, res, next) => {
   try {
@@ -127,7 +119,6 @@ export const generateBulkPDF = async (req, res, next) => {
 
     // Add each PDF file to the merger
     for (const pdfPath of pdfRoutes) {
-      console.log(pdfPath);
       await merger.add(pdfPath);
     }
 
