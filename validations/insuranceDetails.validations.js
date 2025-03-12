@@ -30,7 +30,7 @@ export const insuranceDetailsSchema = Joi.object({
         .allow(null) // Allowing null if it's not required
         .messages({
             'number.base': '"doctor_id" must be a number',
-            'number.integer': '"doctor_id" must be an integer',
+            'number.integer': '"doctor_id" must be an number',
         }),
     prsrb_prov: Joi.string()
         .required()
@@ -71,7 +71,7 @@ export const insuranceDetailsSchema = Joi.object({
         .required()
         .messages({
             'number.base': '"units" must be a number',
-            'number.integer': '"units" must be an integer',
+            'number.integer': '"units" must be an number',
             'any.required': '"units" is required'
         }),
     plan_of_care: Joi.string()
@@ -80,12 +80,21 @@ export const insuranceDetailsSchema = Joi.object({
             'string.base': '"plan_of_care" must be a string',
             'any.required': '"plan_of_care" is required'
         }),
+      global_hours_per_week:Joi.number()
+        .positive()
+        .integer()
+        .required()
+        .messages({
+          'number.base': 'Global Hours Per Week is required',
+          'number.positive': 'Global Hours Per Week must be positive',
+          'number.integer': 'Global Hours Per Week must be an number',
+        }),
     number_of_days: Joi.number()
         .integer()
         .required()
         .messages({
             'number.base': '"number_of_days" must be a number',
-            'number.integer': '"number_of_days" must be an integer',
+            'number.integer': '"number_of_days" must be an number',
             'any.required': '"number_of_days" is required'
         }),
     max_per_day: Joi.number()
@@ -93,7 +102,7 @@ export const insuranceDetailsSchema = Joi.object({
         .required()
         .messages({
             'number.base': '"max_per_day" must be a number',
-            'number.integer': '"max_per_day" must be an integer',
+            'number.integer': '"max_per_day" must be an number',
             'any.required': '"max_per_day" is required'
         }),
     max_per_day_unit: Joi.number()
@@ -101,7 +110,7 @@ export const insuranceDetailsSchema = Joi.object({
         .required()
         .messages({
             'number.base': '"max_per_day_unit" must be a number',
-            'number.integer': '"max_per_day_unit" must be an integer',
+            'number.integer': '"max_per_day_unit" must be an number',
             'any.required': '"max_per_day_unit" is required'
         }),
     insurance_status: Joi.string()
@@ -169,9 +178,7 @@ export const providerSchema = Joi.object({
 
 
 export const insuranceFormSchema = Joi.object({
-    comment: Joi.string().required().messages({
-      'string.empty': 'Comment is required',
-    }),
+  comment: Joi.string().allow("").optional(),
     comment_pa: Joi.string().required().messages({
       'string.empty': 'PA Comment is required',
     }),
@@ -195,6 +202,15 @@ export const insuranceFormSchema = Joi.object({
         'any.only': 'Invalid insurance status',
       }),
     provider_id:Joi.number(),
+    global_hours_per_week:Joi.number()
+    .positive()
+    .integer()
+    .required()
+    .messages({
+      'number.base': 'Global Hours Per Week is required',
+      'number.positive': 'Global Hours Per Week must be positive',
+      'number.integer': 'Global Hours Per Week must be an number',
+    }),
     max_per_day: Joi.number()
       .positive()
       .integer()
@@ -202,7 +218,7 @@ export const insuranceFormSchema = Joi.object({
       .messages({
         'number.base': 'Max per day is required',
         'number.positive': 'Max per day must be positive',
-        'number.integer': 'Max per day must be an integer',
+        'number.integer': 'Max per day must be an number',
       }),
     max_per_day_unit: Joi.number()
       .positive()
@@ -211,7 +227,7 @@ export const insuranceFormSchema = Joi.object({
       .messages({
         'number.base': 'Units are required',
         'number.positive': 'Units must be positive',
-        'number.integer': 'Units must be an integer',
+        'number.integer': 'Units must be an number',
       }),
     mmis_entry: Joi.string().required().messages({
       'string.empty': 'MMIS entry is required',
@@ -223,7 +239,7 @@ export const insuranceFormSchema = Joi.object({
       .messages({
         'number.base': 'Number of days is required',
         'number.positive': 'Number of days must be positive',
-        'number.integer': 'Number of days must be an integer',
+        'number.integer': 'Number of days must be an number',
       }),
     plan_of_care: Joi.string().required().messages({
       'string.empty': 'Plan of care is required',

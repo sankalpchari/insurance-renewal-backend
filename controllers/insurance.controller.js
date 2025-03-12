@@ -135,7 +135,7 @@ export const getInsuranceDetails = async (req, res) => {
                 include: [
                     ...attributes,
                     [sequelize.col('InsuranceProvider.provider_name'), 'provider_name'],
-                    [sequelize.col('InsuranceReceipient.name'), 'receipient_name'],
+                    [sequelize.col('InsuranceReceipient.name'), 'recipient_name'],
                     [sequelize.col('InsuranceReceipient.recipient_ma'), 'recipient_ma'],
                     [sequelize.fn('DATE_FORMAT', sequelize.col('from_service_date'), '%Y-%m-%d'), 'from_service_date'],
                     [sequelize.fn('DATE_FORMAT', sequelize.col('to_service_date'), '%Y-%m-%d'), 'to_service_date'],
@@ -187,7 +187,9 @@ export const createInsuranceDetails = async (req, res) => {
             to_service_date,
             recipient_is,
             procedure_code,
+            global_hours_per_week,
             units,
+            sender_date,
             plan_of_care,
             number_of_days,
             max_per_day,
@@ -228,6 +230,8 @@ export const createInsuranceDetails = async (req, res) => {
         let is_draft = 0;
         if(save_type == "draft"){
             is_draft = 1;
+        }else{
+            is_draft = 0;
         }
 
     
@@ -244,6 +248,8 @@ export const createInsuranceDetails = async (req, res) => {
             units:procedure_units,
             plan_of_care,
             number_of_days,
+            sender_date,
+            global_hours_per_week,
             max_per_day,
             max_per_day_unit,
             insurance_status,
@@ -255,10 +261,17 @@ export const createInsuranceDetails = async (req, res) => {
             is_draft
         });
 
+        let message = "New insurance created successfully"
+        if(is_draft){
+            message = "New insurance saved as draft successfully"
+        }
+
+        console.log(message, "message");
+
         return res.status(201).json({
             data:newInsuranceDetail, 
             success:true, 
-            "message":"New insurance created successfully"
+            "message":message
         });
     } catch (e) {
         console.log(e);
@@ -283,8 +296,10 @@ export const updateInsuranceDetails = async (req, res) => {
             recipient_is,
             procedure_code,
             units,
+            sender_date,
             plan_of_care,
             number_of_days,
+            global_hours_per_week,
             max_per_day,
             max_per_day_unit,
             insurance_status,
@@ -292,32 +307,40 @@ export const updateInsuranceDetails = async (req, res) => {
             rsn,
             comment_pa,
             procedure_val,
-            recipient_ma
+            recipient_ma,
+            save_type
         } = req.body;
 
         const {id} = req.params; 
 
         // Check for existing insurance details for this recipient with overlapping dates
-        const existingDetails = await InsuranceDetails.findOne({
-            where: {
-                recipient_id,
-                to_service_date: {
-                    [sequelize.Op.gte]: from_service_date // to_service_date is greater than or equal to new from_service_date
-                },
-                from_service_date: {
-                    [sequelize.Op.lte]: to_service_date // from_service_date is less than or equal to new to_service_date
-                },
-                is_active: true // Only check for active contracts
-            }
-        });
+        // const existingDetails = await InsuranceDetails.findOne({
+        //     where: {
+        //         recipient_id,
+        //         to_service_date: {
+        //             [sequelize.Op.gte]: from_service_date // to_service_date is greater than or equal to new from_service_date
+        //         },
+        //         from_service_date: {
+        //             [sequelize.Op.lte]: to_service_date // from_service_date is less than or equal to new to_service_date
+        //         },
+        //         is_active: true // Only check for active contracts
+        //     }
+        // });
 
-        // If an existing entry is found, update it
-        if (existingDetails) {
-            // Update the old entry to set is_current_active to 0
-            await InsuranceDetails.update(
-                { is_active: false }, // Set the old entry to inactive
-                { where: { ID: existingDetails.ID } }
-            );
+        // // If an existing entry is found, update it
+        // if (existingDetails) {
+        //     // Update the old entry to set is_current_active to 0
+        //     await InsuranceDetails.update(
+        //         { is_active: false }, // Set the old entry to inactive
+        //         { where: { ID: existingDetails.ID } }
+        //     );
+        // }
+        console.log(save_type, "save_typesave_type")
+        let is_draft = 0;
+        if(save_type == "draft"){
+            is_draft = 1;
+        }else{
+            is_draft = 0;
         }
 
         // Create a new insurance detail entry
@@ -327,6 +350,7 @@ export const updateInsuranceDetails = async (req, res) => {
             prsrb_prov,
             pa,
             from_service_date,
+            global_hours_per_week,
             to_service_date,
             recipient_is,
             procedure_code,
@@ -334,11 +358,13 @@ export const updateInsuranceDetails = async (req, res) => {
             plan_of_care,
             number_of_days,
             max_per_day,
+            sender_date,
             max_per_day_unit,
             insurance_status,
             mmis_entry,
             rsn,
-            comment_pa
+            comment_pa,
+            is_draft
         },{
             where: { ID: id }
         });
@@ -956,19 +982,19 @@ export const renewInsurance = async(req, res)=>{
                                         }
                                     },
                                     // Check if existing to_service_date is > 20 days in future
-                                    literal('to_service_date > DATE_ADD(NOW(), INTERVAL 20 DAY)')
+                                    literal('to_service_date > DATE_ADD(NOW(), INTERVAL 10 DAY)')
                                 ]
                             },
                             raw:true
                         });
 
                         // console.log(existingInsurance, "existingInsurance");
-                        // if (existingInsurance.length > 0) {
-                        //     return res.status(409).json({
-                        //         message: 'Cannot update as the insurance is still active and existing end date is more than 20 days in the future',
-                        //         success: false
-                        //     });
-                        // }
+                        if (existingInsurance.length > 0) {
+                            return res.status(409).json({
+                                message: 'Cannot update as the insurance is still active and existing end date is more than 20 days in the future',
+                                success: false
+                            });
+                        }
 
                         console.log(existingInsurance, "existingInsurance")
 

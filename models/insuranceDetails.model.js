@@ -53,6 +53,16 @@ const InsuranceDetails = sequelize.define("InsuranceDetails", {
         type: DataTypes.TEXT,
         allowNull: false,
     },
+    sender_date: {
+        type: DataTypes.DATEONLY,
+        allowNull: true,
+        defaultValue: null,
+    },
+    global_hours_per_week: {
+        type: DataTypes.INTEGER, // Use INTEGER for days count
+        allowNull: false,
+        default:0
+    },
     number_of_days: {
         type: DataTypes.INTEGER, // Use INTEGER for days count
         allowNull: false,

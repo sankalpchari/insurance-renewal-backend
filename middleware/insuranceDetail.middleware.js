@@ -237,12 +237,13 @@ export const sendRenewalEmail = async(req, res, next)=>{
             });
           }
       
+          const emailBody = createEmailBody("notifyInsuranceProvider", {});
+
           // Define email options
           const emailOptions = {
             to: insuranceProvider.provider_email,
-            subject: "Your Combined PDF Document",
-            text: "Please find attached the combined PDF document.",
-            html: "<p>Please find attached the combined PDF document.</p>",
+            subject: "Client Authorization PDF Document",
+            html: emailBody,
             attachments: [
               {
                 filename: path.basename(combinedPdfPath),

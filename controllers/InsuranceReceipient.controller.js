@@ -2,9 +2,13 @@ import { logActivity } from "../utils/logger.js";
 import sequelize, { Op, fn, col } from "sequelize";
 import InsuranceReceipient from "../models/InsuranceReceipient.model.js";
 import InsuranceDetails from "../models/insuranceDetails.model.js";
+import DoctorDetails from "../models/doctors.model.js";
 
 // Get all insurance recipients
 export const getInsuranceReceipient = async (req, res) => {
+
+    console.log("this one called to get")
+
     try {
         const {
             search_term = "",
@@ -61,7 +65,7 @@ export const getInsuranceReceipient = async (req, res) => {
                 "prsrb_prov",
                 "recipient_type",
                 "dob",
-                [fn("DATE", col("date_created")), "date_created"],
+               // [fn("DATE", col("InsuranceDetails.date_created")), "date_created"],
             ],
             include: [
                 {
@@ -71,6 +75,11 @@ export const getInsuranceReceipient = async (req, res) => {
                     separate: true,
                     order: [["created_date", "DESC"]],
                     limit: 1,
+                }, {
+                    model: DoctorDetails,  // Add the Doctor model here
+                    as: 'Doctor',   // Use the appropriate alias as defined in your associations
+                    attributes: ["doctor_name", "doctor_phone_no"], // Add whatever doctor attributes you need
+                    required: false // Change to true if you want inner join
                 }
             ],
             order: [[sort_by, sort_order]],
