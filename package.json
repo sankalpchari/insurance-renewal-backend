@@ -5,7 +5,7 @@
   "type": "module",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
-    "dev": "nodemon index.js"
+    "dev": "dotenvx run --env-file=.env.local -- nodemon index.js"
   },
   "keywords": [],
   "author": "",
@@ -37,6 +37,7 @@
   },
   "devDependencies": {
     "@faker-js/faker": "^9.2.0",
+    "cross-env": "^7.0.3",
     "nodemon": "^3.1.7"
   }
 }

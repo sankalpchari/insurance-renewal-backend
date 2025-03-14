@@ -5,7 +5,7 @@ const TokenBlacklist = sequelize.define('TokenBlacklist', {
     token: {
         type: DataTypes.STRING,
         allowNull: false,
-        unique: true,
+      //  unique: true,
     },
     expiry: {
         type: DataTypes.DATE,
