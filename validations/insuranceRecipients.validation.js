@@ -18,7 +18,7 @@ export const recipientValidation = Joi.object({
         .messages({
             "string.pattern.base": "Invalid phone number format. Examples: (123) 456-7890, 123-456-7890, +1 123-456-7890, 1-224-966-3668 x6165, or with 'ext.'"
         }),
-    prsrb_prov: Joi.string().trim().required(),
+    prsrb_prov: Joi.string().trim().optional().allow(''),
     recipient_type: Joi.string().valid("MW", "REM", "REM OPT").required(),
     dob: Joi.date().iso().required(),
 });

@@ -23,12 +23,57 @@ export const validateProvider = (req, res, next) => {
 };
 
 
-export const validateInsuranceDetails = (req, res, next) => {
+export const validateInsuranceDetails = async(req, res, next) => {
     const { error } = insuranceFormSchema.validate(req.body, { abortEarly: false });
     if (error) {
         const errorMessages = error.details.map(detail => detail.message);
         return res.status(400).json({ errors: errorMessages });
     }
+
+    const recipient= await InsuranceReceipient.findOne({
+        where:{
+            recipient_ma:req.body.recipient_ma
+        },
+        raw:true
+    });
+
+
+    console.log(req.body);
+
+    if(recipient){
+        const activeInsurance = await InsuranceDetails.findOne({
+            where:{
+                recipient_id:recipient.ID, 
+                is_active:1
+            }, raw:true
+        })
+
+        if (activeInsurance) {
+            const newFromDate = new Date(req.body.from_service_date);
+            const newToDate = new Date(req.body.to_service_date);
+            const existingFromDate = new Date(activeInsurance.from_service_date);
+            const existingToDate = new Date(activeInsurance.to_service_date);
+            
+
+            // if(activeInsurance.is_email_sent == 0){
+            //     return res.status(400).json({ message: "Previous insurance for this user was not authorised", "success":false });
+            // }
+
+
+
+            // Check if the new request overlaps with the existing insurance period
+            const isOverlapping = (newFromDate <= existingToDate && newToDate >= existingFromDate);
+            console.log(isOverlapping, "isOverlappingisOverlapping")
+            if (isOverlapping) {
+                return res.status(400).json({ message: "Service dates overlap with an existing active insurance for this user", "success":false });
+            }
+        }
+    
+    }
+
+    return res.status(400).json({ message: "not found", "success":false });
+
+
     next();
 };
 
@@ -79,7 +124,7 @@ export const checkAndCreateDoctor = async (req, res, next) => {
 
 export const checkAndCreateRecipient = async (req, res, next) => {
     try {
-        const { recipient_name:name, recipient_ma, doctor_id, prsrb_prov, recipient_is, dob } = req.body;
+        const { recipient_name:name, recipient_ma, doctor_id, prsrb_prov = "", recipient_is, dob } = req.body;
         const { type } = req.params;
 
         // Skip validation for simple type
@@ -88,9 +133,9 @@ export const checkAndCreateRecipient = async (req, res, next) => {
         }
 
         // Validate required fields
-        if (!name || !recipient_ma || !doctor_id || !prsrb_prov || !recipient_is || !dob) {
+        if (!name || !recipient_ma || !doctor_id || !recipient_is || !dob) {
             return res.status(400).json({ 
-                message: "All fields are required: name, recipient_ma, doctor_id, prsrb_prov, recipient_type, dob" 
+                message: "All fields are required: name, recipient_ma, doctor_id, recipient_type, dob" 
             });
         }
 
@@ -151,6 +196,7 @@ export const validateRenewalData = (req, res, next) => {
             return res.status(400).json({ errors: errorMessages });
         }   
     }else if(type == "complex"){
+        console.log(req.body, "req.body");
         const { error } = insuranceFormSchema.validate(req.body, { abortEarly: false });
         if (error) {
             const errorMessages = error.details.map(detail => detail.message);

@@ -130,9 +130,9 @@ export const getSingleInsuranceRecipient = async (req, res) => {
 
 // Create insurance recipient
 export const createInsuranceRecipient = async (req, res) => {
-    const { name, recipient_ma, doctor_id = "", prsrb_prov, recipient_type, dob } = req.body;
+    const { name, recipient_ma, doctor_id = "", prsrb_prov="", recipient_type, dob } = req.body;
 
-    if (!name || !recipient_ma || !prsrb_prov || !recipient_type || !dob) {
+    if (!name || !recipient_ma || !recipient_type || !dob) {
         return res.status(400).json({ message: "All fields are required" });
     }
 

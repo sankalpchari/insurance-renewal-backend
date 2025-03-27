@@ -103,29 +103,55 @@ export const getInsuranceDetails = async (req, res) => {
         switch (searchType) {
             case "upcoming":
                 attributes.push([sequelize.literal('DATEDIFF(to_service_date, NOW())'), 'daysUntilExpiry']);
-                whereData.where.to_service_date = { [sequelize.Op.gte]: currentDate };
+                whereData.where = { 
+                    ...whereData.where, 
+                    to_service_date: { [sequelize.Op.gte]: currentDate }, 
+                    is_draft: 0,
+                    is_email_sent: 0, 
+                    is_active: 1 
+                };
                 order.push([sequelize.literal('DATEDIFF(to_service_date, NOW())'), 'ASC']);
                 break;
+        
             case "recent":
                 attributes.push([sequelize.literal('DATEDIFF(NOW(), from_service_date)'), 'daysSinceRenewal']);
+                whereData.where = { 
+                    ...whereData.where, 
+                    is_email_sent: 1, 
+                    is_active: 1 
+                };
                 order.push([sequelize.literal('DATEDIFF(NOW(), from_service_date)'), 'ASC']);
                 break;
+        
             case "expired":
-                whereData.where.to_service_date = { [sequelize.Op.lt]: currentDate }; // Expired
+                attributes.push([sequelize.literal('DATEDIFF(NOW(), to_service_date)'), 'days_passed']);
+                whereData.where = { 
+                    ...whereData.where, 
+                    to_service_date: { [sequelize.Op.lt]: currentDate },
+                    is_draft: 0, 
+                };
                 break;
+        
             default:
                 // No special filtering
         }
+        
 
-        if (sortBy === 'date') {
-            order.push(['from_service_date', sortOrder]);
-        } else if (sortBy === 'name') {
-            order.push([sequelize.col('InsuranceReceipient.name'), sortOrder]);
+        switch (sortBy) {
+            case 'date':
+                order.push(['from_service_date', sortOrder]);
+                break;
+            case 'name':
+                order.push([sequelize.col('InsuranceReceipient.name'), sortOrder]);
+                break;
+            case 'created_date':
+                order.push(['created_date', sortOrder]);
+                break;
         }
 
         const limit = parseInt(recordsPerPage);
         const offset = (parseInt(page) - 1) * limit;
-
+        console.log(order, "<======order")
         const { rows: insuranceDetails, count: totalRecords } = await InsuranceDetails.findAndCountAll({
             include: [
                 { model: InsuranceProvider, as: 'InsuranceProvider', attributes: ['provider_name'], required: true },
@@ -203,27 +229,27 @@ export const createInsuranceDetails = async (req, res) => {
         } = req.body;
 
         // Check for existing insurance details for this recipient with overlapping dates
-        const existingDetails = await InsuranceDetails.findOne({
-            where: {
-                recipient_id,
-                to_service_date: {
-                    [sequelize.Op.gte]: from_service_date // to_service_date is greater than or equal to new from_service_date
-                },
-                from_service_date: {
-                    [sequelize.Op.lte]: to_service_date // from_service_date is less than or equal to new to_service_date
-                },
-                is_active: true // Only check for active contracts
-            }
-        });
+        // const existingDetails = await InsuranceDetails.findOne({
+        //     where: {
+        //         recipient_id,
+        //         to_service_date: {
+        //             [sequelize.Op.gte]: from_service_date // to_service_date is greater than or equal to new from_service_date
+        //         },
+        //         from_service_date: {
+        //             [sequelize.Op.lte]: to_service_date // from_service_date is less than or equal to new to_service_date
+        //         },
+        //         is_active: true // Only check for active contracts
+        //     }
+        // });
 
         // If an existing entry is found, update it
-        if (existingDetails) {
-            // Update the old entry to set is_current_active to 0
-            await InsuranceDetails.update(
-                { is_active: false }, // Set the old entry to inactive
-                { where: { ID: existingDetails.ID } }
-            );
-        }
+        // if (existingDetails) {
+        //     // Update the old entry to set is_current_active to 0
+        //     await InsuranceDetails.update(
+        //         { is_active: false }, // Set the old entry to inactive
+        //         { where: { ID: existingDetails.ID } }
+        //     );
+        // }
 
 
         let record_type = getRecordType(save_type);
@@ -256,7 +282,7 @@ export const createInsuranceDetails = async (req, res) => {
             mmis_entry,
             rsn,
             comment_pa,
-            is_active: true,
+            is_active: 0,
             record_type,
             is_draft
         });
@@ -313,29 +339,6 @@ export const updateInsuranceDetails = async (req, res) => {
 
         const {id} = req.params; 
 
-        // Check for existing insurance details for this recipient with overlapping dates
-        // const existingDetails = await InsuranceDetails.findOne({
-        //     where: {
-        //         recipient_id,
-        //         to_service_date: {
-        //             [sequelize.Op.gte]: from_service_date // to_service_date is greater than or equal to new from_service_date
-        //         },
-        //         from_service_date: {
-        //             [sequelize.Op.lte]: to_service_date // from_service_date is less than or equal to new to_service_date
-        //         },
-        //         is_active: true // Only check for active contracts
-        //     }
-        // });
-
-        // // If an existing entry is found, update it
-        // if (existingDetails) {
-        //     // Update the old entry to set is_current_active to 0
-        //     await InsuranceDetails.update(
-        //         { is_active: false }, // Set the old entry to inactive
-        //         { where: { ID: existingDetails.ID } }
-        //     );
-        // }
-        console.log(save_type, "save_typesave_type")
         let is_draft = 0;
         if(save_type == "draft"){
             is_draft = 1;
@@ -888,8 +891,8 @@ export const singleInsuranceDetails = async(req, res)=>{
     try{
 
         const { id } =  req.params
-
-        const insuranceProvider = await InsuranceDetails.findOne({
+console.log("valled<===================", id)
+        const insuranceDetails = await InsuranceDetails.findOne({
             include: [
                 {
                     model: InsuranceProvider,
@@ -930,11 +933,21 @@ export const singleInsuranceDetails = async(req, res)=>{
             raw: true
         });
 
-        insuranceProvider['doctor_name'] = insuranceProvider['InsuranceReceipient.Doctor.doctor_name']
-        insuranceProvider['doctor_number'] = insuranceProvider['InsuranceReceipient.Doctor.doctor_phone_no']
 
-        if(Object.keys(insuranceProvider).length){
-           return res.status(200).json({ message: 'Insurance Details added successfully', data: insuranceProvider, success:true });
+        if (insuranceDetails && 'InsuranceReceipient.Doctor.doctor_name' in insuranceDetails) {
+            insuranceDetails['doctor_name'] = insuranceDetails['InsuranceReceipient.Doctor.doctor_name'];
+        } else {
+            insuranceDetails['doctor_name'] = "";
+        }
+        
+        if (insuranceDetails && 'InsuranceReceipient.Doctor.doctor_phone_no' in insuranceDetails) {
+            insuranceDetails['doctor_number'] = insuranceDetails['InsuranceReceipient.Doctor.doctor_phone_no'];
+        } else {
+            insuranceDetails['doctor_number'] = "";
+        }
+
+        if(Object.keys(insuranceDetails).length){
+           return res.status(200).json({ message: 'Insurance Details added successfully', data: insuranceDetails, success:true });
         }else{
             return res.status(204).json({ message: 'Insurance Details added successfully', data: [], success:false });
         }
@@ -1134,11 +1147,12 @@ export const renewInsurance = async(req, res)=>{
                         number_of_days,
                         max_per_day,
                         max_per_day_unit,
+                        global_hours_per_week,
                         insurance_status,
                         mmis_entry,
                         rsn,
                         comment_pa,
-                        procedure_val,
+                        procedure_units,
                     } = req.body;
 
                     await InsuranceDetails.update(
@@ -1151,11 +1165,12 @@ export const renewInsurance = async(req, res)=>{
                                 recipient_id,
                                 prsrb_prov,
                                 pa,
+                                global_hours_per_week,
                                 from_service_date,
                                 to_service_date,
                                 recipient_is,
                                 procedure_code,
-                                units:procedure_val,
+                                units:procedure_units,
                                 plan_of_care,
                                 number_of_days,
                                 max_per_day,

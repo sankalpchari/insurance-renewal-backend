@@ -42,34 +42,35 @@ const initializeRoles = async () => {
 
 export const syncDatabase = async () => {
     try {
+        const models = {
+            User,
+            InsuranceProvider,
+            InsuranceDetails,
+            DoctorDetails,
+            Roles,
+            TokenBlacklist,
+            InsuranceReceipient,
+            EmailStatus,
+            ActivityTracker,
+            Settings
+        };
+
+        // Apply associations before syncing
+        Object.keys(models).forEach(modelName => {
+            if (models[modelName].associate) {
+                models[modelName].associate(models);
+            }
+        });
+
+        // Sync database after associations are defined
         await sequelize.sync({ alter: true });
+
+        await initializeRoles();
     } catch (error) {
         console.error('Error synchronizing database:', error);
     }
-
-    const models = {
-        User,
-        InsuranceProvider,
-        InsuranceDetails,
-        DoctorDetails,
-        Roles,
-        TokenBlacklist,
-        InsuranceReceipient,
-        EmailStatus,
-        ActivityTracker,
-        Settings
-    };
-    
-    Object.keys(models).forEach(modelName => {
-        if (models[modelName].associate) {
-            models[modelName].associate(models);
-        }
-    });
-
-    await initializeRoles();
-
-
 };
+
 
 
 

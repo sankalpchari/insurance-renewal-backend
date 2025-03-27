@@ -32,12 +32,7 @@ export const insuranceDetailsSchema = Joi.object({
             'number.base': '"doctor_id" must be a number',
             'number.integer': '"doctor_id" must be an number',
         }),
-    prsrb_prov: Joi.string()
-        .required()
-        .messages({
-            'string.base': '"prsrb_prov" must be a string',
-            'any.required': '"prsrb_prov" is required'
-        }),
+    prsrb_prov: Joi.string().trim().optional().allow(''),
     from_service_date: Joi.date()
         .iso()
         .required()
@@ -86,7 +81,7 @@ export const insuranceDetailsSchema = Joi.object({
         .required()
         .messages({
           'number.base': 'Global Hours Per Week is required',
-          'number.positive': 'Global Hours Per Week must be positive',
+          'number.positive': 'Global Hours Per Week must be more then 0',
           'number.integer': 'Global Hours Per Week must be an number',
         }),
     number_of_days: Joi.number()
@@ -253,9 +248,7 @@ export const insuranceFormSchema = Joi.object({
     procedure_units: Joi.number().optional().allow(null),
     provider_name: Joi.string().required().messages({'string.empty': 'Provider name is required',}),
     provider_number: Joi.string().pattern(/^[0-9]+$/).required().messages({ 'string.pattern.base': 'Provider number must be numeric', 'string.empty': 'Provider number is required',}),
-    prsrb_prov: Joi.string().required().messages({
-      'string.empty': 'Prescription provider is required',
-    }),
+    prsrb_prov: Joi.string().trim().optional().allow(''),
     recipient_is: Joi.string()
       .valid('MW', 'REM', 'REM OPT MODEL WAIVER')
       .required()
