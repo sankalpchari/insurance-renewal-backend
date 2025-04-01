@@ -26,6 +26,7 @@ import {
     checkAndCreateRecipient,
     validateRenewalData,
     validatePDF,
+    validateIfAlreadyApproved,
     sendRenewalEmail
 } from "../middleware/insuranceDetail.middleware.js";
 import { upload, handleUploadError } from "../config/multer.js";
@@ -41,7 +42,7 @@ insuranceRouter.post("/", auth, checkPermission, validateInsuranceDetails, check
 insuranceRouter.patch("/:id", auth, checkPermission, validateInsuranceDetails, checkAndCreateDoctor, checkAndCreateRecipient, updateInsuranceDetails);
 insuranceRouter.delete("/:id", auth, checkPermission, deleteInsurance);
 insuranceRouter.post("/renew/:type/:id", auth, validateRenewalData,  checkAndCreateDoctor, checkAndCreateRecipient, renewInsurance);
-insuranceRouter.post("/send-renewal-mail", auth,  validatePDF,  generateBulkPDF,  sendRenewalEmail, updateStatusInDB);
+insuranceRouter.post("/send-renewal-mail", auth, validateIfAlreadyApproved, validatePDF,  generateBulkPDF,  sendRenewalEmail, updateStatusInDB);
 //Renewal stats
 insuranceRouter.get("/renewal-data", auth, getRenewalData);
 insuranceRouter.get("/renewal-data/all/:id", auth, getRenewedInsuranceDetails);

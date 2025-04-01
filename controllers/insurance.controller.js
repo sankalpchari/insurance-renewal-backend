@@ -78,8 +78,7 @@ export const getInsuranceDetails = async (req, res) => {
 
         // Other filters
         if (is_default) whereData.where.is_default = is_default;
-        // if (is_active) 
-        whereData.where.is_active = { [sequelize.Op.eq]: 1 };
+        if (is_active) whereData.where.is_active = { [sequelize.Op.eq]: 1 };
         if (is_email_sent) whereData.where.is_email_sent = { [sequelize.Op.eq]: is_email_sent };
         if (is_draft) whereData.where.is_draft = { [sequelize.Op.eq]: is_draft };
 
@@ -133,6 +132,7 @@ export const getInsuranceDetails = async (req, res) => {
                 break;
         
             default:
+                attributes.push([sequelize.literal('DATEDIFF(NOW(), to_service_date)'), 'days_passed']);
                 // No special filtering
         }
         
@@ -149,9 +149,21 @@ export const getInsuranceDetails = async (req, res) => {
                 break;
         }
 
+
+        whereData.where = {
+            ...whereData.where,
+            created_date: {
+                [sequelize.Op.eq]: sequelize.literal(`(
+                    SELECT MAX(created_date) 
+                    FROM insurance_details AS subquery 
+                    WHERE subquery.recipient_id = InsuranceDetails.recipient_id
+                )`)
+            }
+        }
+
         const limit = parseInt(recordsPerPage);
         const offset = (parseInt(page) - 1) * limit;
-        console.log(order, "<======order")
+
         const { rows: insuranceDetails, count: totalRecords } = await InsuranceDetails.findAndCountAll({
             include: [
                 { model: InsuranceProvider, as: 'InsuranceProvider', attributes: ['provider_name'], required: true },
@@ -173,6 +185,7 @@ export const getInsuranceDetails = async (req, res) => {
             },
             where: whereData.where,
             order: order,
+            group: ['recipient_id'],
             limit: limit,
             offset: offset,
             raw: true
@@ -204,6 +217,9 @@ export const getInsuranceDetails = async (req, res) => {
 
 export const createInsuranceDetails = async (req, res) => {
     try {
+
+        console.log("=========================> testing full flow <========================")
+
         const {
             provider_id,
             recipient_id,
@@ -968,10 +984,6 @@ export const renewInsurance = async(req, res)=>{
             },
             raw:true
         })  
-        
-        console.log(type, id); 
-        console.log("type, id");
-        
 
         switch(type){
             case "simple":
@@ -983,7 +995,7 @@ export const renewInsurance = async(req, res)=>{
                         const existingInsurance = await InsuranceDetails.findAll({
                             where: {
                                 recipient_id: insurance.recipient_id,
-                                is_active: 1,
+                                is_active: 0,
                                 [Op.or]: [
                                     // Check for date overlap
                                     {
@@ -1011,12 +1023,13 @@ export const renewInsurance = async(req, res)=>{
 
                         console.log(existingInsurance, "existingInsurance")
 
-                        await InsuranceDetails.update(
-                            { is_active: 0 },
-                            { where: { recipient_id: insurance.recipient_id } }
-                        );
+                        // await InsuranceDetails.update(
+                        //     { is_active: 0 },
+                        //     { where: { recipient_id: insurance.recipient_id } }
+                        // );
 
                         delete insurance.ID;
+                        delete insurance.created_date
 
                         const newInsurance = await InsuranceDetails.create({
                             ...insurance,
@@ -1179,7 +1192,7 @@ export const renewInsurance = async(req, res)=>{
                                 mmis_entry,
                                 rsn,
                                 comment_pa,
-                                is_active: true
+                                is_active: 0
                             });
                         
                     return res.status(201).json({
@@ -1201,20 +1214,38 @@ export const renewInsurance = async(req, res)=>{
 
 export const updateStatusInDB = async(req, res)=>{
     try{
-
         const { ids } = req.body;
         const {user, combinedPdfPath, emailResp} = req;
         const {userId } = user;
 
+        console.log("this called");
+        console.log(ids);
+        const recipientIds = await InsuranceDetails.findAll({
+            where: {
+                ID: { [Op.in]: ids }  // Ensure ids is an array of valid IDs
+            },
+            attributes: ["recipient_id"], // Fetch only the "recipient_id" field
+            raw:true
+        });
+
+        const rec_ids = recipientIds.map(rec=>rec.recipient_id);
+        
         await InsuranceDetails.update(
-            { is_email_sent: 1 },
-            {
+            { is_active:0 },{
                 where: {
-                    ID: ids
-                }
+                    ID: { [Op.in]: rec_ids } 
+                },
             }
         );
 
+        await InsuranceDetails.update(
+            { is_email_sent: 1, is_active:1 },
+            {
+                where: {
+                    ID: { [Op.in]: ids } 
+                },
+            }
+        );
 
         const pathsplit = combinedPdfPath.split("assets");
         const modifiedPath = "/assets" + pathsplit[1].replace(/\\/g, "/");
